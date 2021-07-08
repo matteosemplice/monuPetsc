@@ -18,10 +18,11 @@ MAIN=monuCart.cpp
 
 EXTRASRC=appctx.cpp sulfation1d.cpp
 EXTRAOBJS=${EXTRASRC:%.cpp=%.o}
+EXTRAHDR=${EXTRASRC:%.cpp=%.h}
 
 all: ${EXE}
 
-${EXE}: ${MAIN:.cpp=.o} ${EXTRAOBJS} appctx.h
+${EXE}: ${MAIN:.cpp=.o} ${EXTRAOBJS} ${EXTRAHDR}
 	-${CXXLINKER} -o ${EXE} ${DEFS} ${MAIN:.cpp=.o} ${EXTRAOBJS} ${PETSC_DM_LIB} ${PETSC_SNES_LIB} ${PETSC_KSP_LIB} ${PETSC_SYS_LIB}
 
 %.o: %.cpp $.h appctx.h
