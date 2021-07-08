@@ -25,23 +25,59 @@ int main(int argc, char **argv) {
   SNES snes;
   KSP kspJ;
   PC pcJ;
+
+  //Cpu rank
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&ctx.rank);CHKERRQ(ierr);
-  //PetscPrintf(PETSC_COMM_SELF,"CPU Rank=%d\n",ctx.rank); //numero della CPU=0,1,2,...
+  PetscPrintf(PETSC_COMM_SELF,"CPU Rank=%d\n",ctx.rank); //numero della CPU=0,1,2,...
+
+  //Space dimensions
+  ierr = PetscOptionsGetInt(NULL,NULL,"-dim",&ctx.dim,NULL);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_SELF,"Solving problem in %d space dimensions\n",ctx.dim);
 
   //Parametri della griglia
   ctx.Nx=5;
   ierr = PetscOptionsGetInt(NULL,NULL,"-Nx",&ctx.Nx,NULL);CHKERRQ(ierr);
   ctx.dx = 1.0 / ctx.Nx;
-  //ctx.Ny = ctx.Nx;
-  PetscPrintf(PETSC_COMM_WORLD,"Grid of %d cells.\n",ctx.Nx);
-  //PetscPrintf(PETSC_COMM_WORLD,"Grid of %dX%d cells.\n",ctx.Nx,ctx.Ny);
+  if (ctx.dim>1)
+    ctx.Ny = ctx.Nx;
+  if (ctx.dim>2)
+    ctx.Nz = ctx.Nx;
+  PetscPrintf(PETSC_COMM_WORLD,"Grid of %d cells per direction.\n",ctx.Nx);
 
-  //Create DMDAs
-  ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,
-                      ctx.Nx,
-                      2,stWidth,NULL,
-                      &(ctx.daAll));
-                      CHKERRQ(ierr);
+  //Create DMDA
+  switch (ctx.dim){
+  case 1: ierr = DMDACreate1d(PETSC_COMM_WORLD,
+                              DM_BOUNDARY_NONE,
+                              ctx.Nx,
+                              2,stWidth,NULL,
+                              &(ctx.daAll));
+          CHKERRQ(ierr);
+          break;
+  case 2: ierr = DMDACreate2d(PETSC_COMM_WORLD,
+                              DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,
+                              DMDA_STENCIL_STAR,
+                              ctx.Nx,ctx.Ny, //global dim
+                              PETSC_DECIDE,PETSC_DECIDE, //n proc on each dim
+                              2,stWidth, //dof, stencil width
+                              NULL, NULL, //n nodes per direction on each cpu
+                              &(ctx.daAll));
+          SETERRQ(PETSC_COMM_WORLD,1,"Numero di dimensioni non (ancora) gestito");
+          CHKERRQ(ierr);
+          break;
+  case 3: ierr = DMDACreate3d(PETSC_COMM_WORLD,
+                              DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,
+                              DMDA_STENCIL_STAR,
+                              ctx.Nx,ctx.Ny,ctx.Nz, //global dim
+                              PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, //n proc on each dim
+                              2,stWidth, //dof, stencil width
+                              NULL,NULL,NULL, //n nodes per direction on each cpu
+                              &(ctx.daAll));
+          SETERRQ(PETSC_COMM_WORLD,1,"Numero di dimensioni non (ancora) gestito");
+          CHKERRQ(ierr);
+          break;
+  default: SETERRQ(PETSC_COMM_WORLD,1,"Numero di dimensioni non gestito");
+  }
+
   ierr = DMSetFromOptions(ctx.daAll); CHKERRQ(ierr);
   ierr = DMSetUp(ctx.daAll); CHKERRQ(ierr); CHKERRQ(ierr);
   ierr = DMDASetFieldName(ctx.daAll,0,"s"); CHKERRQ(ierr);
@@ -76,10 +112,10 @@ int main(int argc, char **argv) {
 
   //Use Crank-Nicolson
   ctx.dt   =ctx.dx;
-  ctx.theta=0.5; //Crank-Nicolson
+  ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
   //Initial data
-  ierr = setU0(ctx.U0,(void *) &ctx); CHKERRQ(ierr);
+  ierr = setU01d(ctx.U0,(void *) &ctx); CHKERRQ(ierr);
   //PetscPrintf(PETSC_COMM_WORLD,"====== U0 ======\n");
   //ierr = VecView(ctx.U0,PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
   //PetscPrintf(PETSC_COMM_WORLD,"================\n");
@@ -98,7 +134,7 @@ int main(int argc, char **argv) {
     if (t+ctx.dt>tFinal)
       ctx.dt = (tFinal - t) + 1e-15;
 
-    ierr = FormRHS(ctx.F0,(void *) &ctx); CHKERRQ(ierr);
+    ierr = FormRHS1d(ctx.F0,(void *) &ctx); CHKERRQ(ierr);
     //PetscPrintf(PETSC_COMM_WORLD,"====== RHS ======\n");
     //ierr = VecView(ctx.F0,PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
     //PetscPrintf(PETSC_COMM_WORLD,"===================\n");

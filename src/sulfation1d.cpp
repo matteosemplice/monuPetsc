@@ -4,7 +4,7 @@
 
 #include <petscdmcomposite.h>
 
-PetscErrorCode FormJacobian(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
+PetscErrorCode FormJacobian1d(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   PetscErrorCode ierr;
   AppContext * ctx = (AppContext *) _ctx;
   PetscScalar *phi;
@@ -148,7 +148,7 @@ void formF(data_type *u, PetscScalar *phi, data_type *f, PetscScalar dtFactor, A
   }
 }
 
-PetscErrorCode FormRHS(Vec F0,void *_ctx){
+PetscErrorCode FormRHS1d(Vec F0,void *_ctx){
   PetscErrorCode ierr;
   AppContext * ctx = (AppContext *) _ctx;
   data_type *u0, *f0;
@@ -180,7 +180,7 @@ PetscErrorCode FormRHS(Vec F0,void *_ctx){
   return ierr;
 }
 
-PetscErrorCode FormFunction(SNES snes,Vec U,Vec F,void *_ctx){
+PetscErrorCode FormFunction1d(SNES snes,Vec U,Vec F,void *_ctx){
   PetscErrorCode ierr;
   AppContext * ctx = (AppContext *) _ctx;
   data_type *u, *f;
@@ -216,7 +216,7 @@ PetscErrorCode FormFunction(SNES snes,Vec U,Vec F,void *_ctx){
   return ierr;
 }
 
-PetscErrorCode setU0(Vec U,void *_ctx){
+PetscErrorCode setU01d(Vec U,void *_ctx){
   PetscErrorCode ierr;
   AppContext * ctx = (AppContext *) _ctx;
 

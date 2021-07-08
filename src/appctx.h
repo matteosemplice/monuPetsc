@@ -29,14 +29,15 @@ class sulfationProblem{
 };
 
 typedef struct {
-  PetscInt Nx; //no. of cells
+  PetscInt Nx,Ny,Nz; //no. of cells
   PetscScalar dx; //cell size
   PetscInt rank;  //rank of processor
   DM daAll;       //composite DA
   DMDALocalInfo daInfo;//, daInfoC, daInfoS;
   IS *is;
   DM *daField;
-  //ISLocalToGlobalMapping *ltgs;
+
+  PetscInt dim=3;
 
   Mat J; //Jacobian
   //Mat Jb[4]; //Jacobian blocks
