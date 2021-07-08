@@ -89,6 +89,9 @@ int main(int argc, char **argv) {
   PetscViewerDrawOpen(PETSC_COMM_WORLD,NULL,"SO2",PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,&viewerS);
   PetscViewerDrawOpen(PETSC_COMM_WORLD,NULL,"CaCO3",PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,&viewerC);
 
+  ierr = SNESSetFunction(snes,ctx.F,FormFunction1d,(void *) &ctx); CHKERRQ(ierr);
+  ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormJacobian1d,(void *) &ctx); CHKERRQ(ierr);
+
   PetscScalar t = 0.;
   const PetscScalar tFinal = 1.0;
   while (t<tFinal){
@@ -99,9 +102,6 @@ int main(int argc, char **argv) {
     //PetscPrintf(PETSC_COMM_WORLD,"====== RHS ======\n");
     //ierr = VecView(ctx.F0,PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
     //PetscPrintf(PETSC_COMM_WORLD,"===================\n");
-
-    ierr = SNESSetFunction(snes,ctx.F,FormFunction,(void *) &ctx); CHKERRQ(ierr);
-    ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormJacobian,(void *) &ctx); CHKERRQ(ierr);
 
     ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
     ierr = SNESSolve(snes,ctx.F0,ctx.U); CHKERRQ(ierr);
