@@ -82,7 +82,7 @@ PetscErrorCode FormJacobian1d(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
     } else {
       vals[0] =        factordDX2*0.5*(u[i-1].s - u[i].s             ) * ctx->pb.phiDer(u[i-1].c);
       vals[1] = diag + factordDX2*0.5*(u[i-1].s - 2.*u[i].s +u[i+1].s) * ctx->pb.phiDer(u[i].c);
-      vals[2] =        factordDX2*0.5*(u[i+1].s - u[i].s             ) * ctx->pb.phiDer(u[i-1].c);
+      vals[2] =        factordDX2*0.5*(u[i+1].s - u[i].s             ) * ctx->pb.phiDer(u[i+1].c);
       MatSetValuesStencil(J,1,&row,3,cols,vals,INSERT_VALUES);
     }
   }
@@ -121,7 +121,7 @@ PetscErrorCode FormJacobian1d(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
 
 }
 
-void formF(data_type *u, PetscScalar *phi, data_type *f, PetscScalar dtFactor, AppContext* ctx){
+void formF1d(data_type *u, PetscScalar *phi, data_type *f, PetscScalar dtFactor, AppContext* ctx){
   const PetscScalar As = ctx->pb.a/ctx->pb.mc;
   const PetscScalar Ac = ctx->pb.a/ctx->pb.ms;
   const PetscScalar dOverDX2 = ctx->pb.d / (ctx->dx*ctx->dx);
@@ -168,7 +168,7 @@ PetscErrorCode FormRHS1d(Vec F0,void *_ctx){
     phi0[i] = ctx->pb.phi(u0[i].c);
 
   //calcolo della F
-  formF(u0,phi0,f0,ctx->dt*ctx->theta,ctx);
+  formF1d(u0,phi0,f0,ctx->dt*ctx->theta,ctx);
 
   //Ripristino vettori della U e della PHI
   ierr = DMDAVecRestoreArray(ctx->daField[var::c],ctx->PHIloc,&phi0); CHKERRQ(ierr);
@@ -204,7 +204,7 @@ PetscErrorCode FormFunction1d(SNES snes,Vec U,Vec F,void *_ctx){
     phi[i] = ctx->pb.phi(u[i].c);
 
   //calcolo della F
-  formF(u,phi,f,-ctx->dt*(1.-ctx->theta),ctx);
+  formF1d(u,phi,f,-ctx->dt*(1.-ctx->theta),ctx);
 
   //Ripristino vettori della U e della PHI
   ierr = DMDAVecRestoreArray(ctx->daField[var::c],ctx->PHIloc,&phi); CHKERRQ(ierr);
