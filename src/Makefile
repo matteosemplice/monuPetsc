@@ -25,5 +25,8 @@ all: ${EXE}
 ${EXE}: ${MAIN:.cpp=.o} ${EXTRAOBJS} ${EXTRAHDR}
 	-${CXXLINKER} -o ${EXE} ${DEFS} ${MAIN:.cpp=.o} ${EXTRAOBJS} ${PETSC_DM_LIB} ${PETSC_SNES_LIB} ${PETSC_KSP_LIB} ${PETSC_SYS_LIB}
 
+testHDF5: testHDF5.o appctx.h
+	-${CXXLINKER} -o testHDF5 ${DEFS} testHDF5.o ${PETSC_DM_LIB} ${PETSC_SNES_LIB} ${PETSC_KSP_LIB} ${PETSC_SYS_LIB}
+
 %.o: %.cpp $.h appctx.h
 	-${PETSC_CXXCOMPILE_SINGLE} -c ${DEFS} -o $@ $*.cpp
