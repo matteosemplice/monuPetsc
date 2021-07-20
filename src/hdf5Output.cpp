@@ -3,7 +3,7 @@
 #include <petscviewerhdf5.h>
 
 #include "appctx.h"
-#include "vtkOutput.h"
+#include "hdf5Output.h"
 #include <stdio.h>
 //#include <assert.h>
 

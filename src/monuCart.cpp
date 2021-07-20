@@ -10,7 +10,6 @@ static char help[] = "Cartesian monument sulfation\n";
 #include "sulfation1d.h"
 #include "sulfation2d.h"
 #include "sulfation3d.h"
-#include "vtkOutput.h"
 #include "hdf5Output.h"
 
 int main(int argc, char **argv) {
@@ -186,12 +185,6 @@ int main(int argc, char **argv) {
   PetscViewerDestroy(&viewerC);
 
   ierr = WriteHDF5(ctx, "finale", ctx.U);
-
-  if (ctx.dim==2){
-    if (ctx.rank==0)
-      ierr = WritePVTR(ctx, "finale");
-    ierr = WriteVTR(ctx, "finale", ctx.U);
-  }
 
   ierr = SNESDestroy(&snes); CHKERRQ(ierr);
   ierr = cleanUpContext(ctx); CHKERRQ(ierr);
