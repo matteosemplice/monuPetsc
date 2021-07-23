@@ -47,8 +47,8 @@ int main(int argc, char **argv) {
     PetscScalar y = j*dy;
     for (PetscInt i=daInfo.xs; i<daInfo.xs+daInfo.xm; i++){
       PetscScalar x = i*dx;
-      u[j][i].s = x+2.*y;
-      u[j][i].c = 10. + 2.*x*x+y*y;
+      u[j][i].s = ((x-1.)*(x-1.) + y*y<=0.25 ? x+2.*y           : NAN);
+      u[j][i].c = (x*x + (y-1.)*(y-1.)<=0.25 ? 10. + 2.*x*x+y*y : NAN);
     }
   }
   ierr = DMDAVecRestoreArray(dmda,U0,&u); CHKERRQ(ierr);
