@@ -56,14 +56,14 @@ int main(int argc, char **argv) {
   PetscViewer viewer;
   ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"solutionSC.hdf5",FILE_MODE_WRITE,&viewer); CHKERRQ(ierr);
   Vec uField;
-  ierr = VecGetSubVector(U0,is[0],&uField); CHKERRQ(ierr);
+  ierr = DMCreateGlobalVector(daField[0], &uField); CHKERRQ(ierr);
+  ierr = VecStrideGather(U0,0,uField,INSERT_VALUES); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "S");
   ierr = VecView(uField,viewer); CHKERRQ(ierr);
-  ierr = VecRestoreSubVector(U0,is[0],&uField); CHKERRQ(ierr);
-  ierr = VecGetSubVector(U0,is[1],&uField); CHKERRQ(ierr);
+  ierr = VecStrideGather(U0,1,uField,INSERT_VALUES); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "C");
   ierr = VecView(uField,viewer); CHKERRQ(ierr);
-  ierr = VecRestoreSubVector(U0,is[1],&uField); CHKERRQ(ierr);
+  ierr = DMRestoreGlobalVector(daField[0], &uField); CHKERRQ(ierr);
   ierr = PetscViewerDestroy(&viewer); CHKERRQ(ierr);
 
   ierr = PetscFinalize();

@@ -18,14 +18,19 @@ PetscErrorCode WriteHDF5(AppContext &ctx, const char * basename, Vec U){
   PetscPrintf(PETSC_COMM_WORLD,"Save on file %s\n",hdf5name);
   ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,hdf5name,FILE_MODE_WRITE,&viewer); CHKERRQ(ierr);
   Vec uField;
-  ierr = VecGetSubVector(U,ctx.is[var::s],&uField); CHKERRQ(ierr);
+
+  ierr = DMGetGlobalVector(ctx.daField[var::s], &uField); CHKERRQ(ierr);
+  ierr = VecStrideGather(U,var::s,uField,INSERT_VALUES); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "S");
   ierr = VecView(uField,viewer); CHKERRQ(ierr);
-  ierr = VecRestoreSubVector(U,ctx.is[var::s],&uField); CHKERRQ(ierr);
-  ierr = VecGetSubVector(U,ctx.is[var::c],&uField); CHKERRQ(ierr);
+  ierr = DMRestoreGlobalVector(ctx.daField[0], &uField); CHKERRQ(ierr);
+
+  ierr = DMGetGlobalVector(ctx.daField[var::c], &uField); CHKERRQ(ierr);
+  ierr = VecStrideGather(U,var::c,uField,INSERT_VALUES); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "C");
   ierr = VecView(uField,viewer); CHKERRQ(ierr);
-  ierr = VecRestoreSubVector(U,ctx.is[var::c],&uField); CHKERRQ(ierr);
+  ierr = DMRestoreGlobalVector(ctx.daField[0], &uField); CHKERRQ(ierr);
+
   ierr = PetscViewerDestroy(&viewer); CHKERRQ(ierr);
 
   if (ctx.rank==0){
