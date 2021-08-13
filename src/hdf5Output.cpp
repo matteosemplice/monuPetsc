@@ -23,13 +23,13 @@ PetscErrorCode WriteHDF5(AppContext &ctx, const char * basename, Vec U){
   ierr = VecStrideGather(U,var::s,uField,INSERT_VALUES); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "S");
   ierr = VecView(uField,viewer); CHKERRQ(ierr);
-  ierr = DMRestoreGlobalVector(ctx.daField[0], &uField); CHKERRQ(ierr);
+  ierr = DMRestoreGlobalVector(ctx.daField[var::s], &uField); CHKERRQ(ierr);
 
   ierr = DMGetGlobalVector(ctx.daField[var::c], &uField); CHKERRQ(ierr);
   ierr = VecStrideGather(U,var::c,uField,INSERT_VALUES); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "C");
   ierr = VecView(uField,viewer); CHKERRQ(ierr);
-  ierr = DMRestoreGlobalVector(ctx.daField[0], &uField); CHKERRQ(ierr);
+  ierr = DMRestoreGlobalVector(ctx.daField[var::c], &uField); CHKERRQ(ierr);
 
   ierr = PetscViewerDestroy(&viewer); CHKERRQ(ierr);
 
