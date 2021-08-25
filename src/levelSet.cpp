@@ -680,7 +680,7 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   int sx=SIGN(xC-xG);  int sy=SIGN(yC-yG);  int sz=SIGN(zC-zG);
   if(sx==0)
       //sx=SGN(Phi[k-nn1]-Phi[k+nn1]);
-      sx=(i<nn1/2.)-(1>=nn1/2.);
+      sx=(i<nn1/2.)-(i>=nn1/2.);
   if(sy==0)
       //sy=SGN(Phi[k-1]-Phi[k+1]);
       sy=(j<nn2/2.)-(j>=nn2/2.);
