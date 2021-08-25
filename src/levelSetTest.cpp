@@ -51,6 +51,9 @@ PetscErrorCode setRHS(AppContext &ctx)
             rhs[k][j][i][var::s]=s_(B[k][j][i].x, B[k][j][i].y, B[k][j][i].z);
             rhs[k][j][i][var::c]=c_(B[k][j][i].x, B[k][j][i].y, B[k][j][i].z);
           }
+        } else {
+            rhs[k][j][i][var::s]=0.;//s_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
+            rhs[k][j][i][var::c]=0.;//c_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
         }
       }
     }
@@ -182,8 +185,8 @@ PetscErrorCode setExact(AppContext &ctx, Vec EXA)
             exa[k][j][i][var::c]=c_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
         }
         else{
-            exa[k][j][i][var::s]=1;
-            exa[k][j][i][var::c]=1;
+            exa[k][j][i][var::s]=0.;
+            exa[k][j][i][var::c]=0.;
         }
       }
     }
