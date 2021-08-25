@@ -906,10 +906,10 @@ PetscErrorCode setMatrix(AppContext &ctx)
         else if(nodetype[k][j][i]==N_INSIDE)
         {
           double sigmaC = sigma[k][j][i];
-          double gammaX1 = (gamma[k][j][i] + gamma[k][j-1][i]) / 2;
-          double gammaX2 = (gamma[k][j][i] + gamma[k][j+1][i]) / 2;
-          double gammaY1 = (gamma[k][j][i] + gamma[k][j][i-1]) / 2;
-          double gammaY2 = (gamma[k][j][i] + gamma[k][j][i+1]) / 2;
+          double gammaX1 = (gamma[k][j][i] + gamma[k][j][i-1]) / 2;
+          double gammaX2 = (gamma[k][j][i] + gamma[k][j][i+1]) / 2;
+          double gammaY1 = (gamma[k][j][i] + gamma[k][j-1][i]) / 2;
+          double gammaY2 = (gamma[k][j][i] + gamma[k][j+1][i]) / 2;
           double gammaZ1 = (gamma[k][j][i] + gamma[k-1][j][i]) / 2;
           double gammaZ2 = (gamma[k][j][i] + gamma[k+1][j][i]) / 2;
           MatStencil rows = {0}, cols[7] = {{0}};
@@ -918,13 +918,13 @@ PetscErrorCode setMatrix(AppContext &ctx)
           rows.i = i; rows.j = j; rows.k = k;  rows.c=var::s;
           cols[ncols].i = i; cols[ncols].j = j; cols[ncols].k = k; cols[ncols].c=var::s;
           vals[ncols++] = sigmaC+(gammaX1+gammaX2)/dx2+(gammaY1+gammaY2)/dy2+(gammaZ1+gammaZ2)/dz2;
-          cols[ncols].i = i; cols[ncols].j = j-1; cols[ncols].k = k; cols[ncols].c=var::s;
-          vals[ncols++] = -gammaX1/dx2;
-          cols[ncols].i = i; cols[ncols].j = j+1; cols[ncols].k = k; cols[ncols].c=var::s;
-          vals[ncols++] = -gammaX2/dx2;
           cols[ncols].i = i-1; cols[ncols].j = j; cols[ncols].k = k; cols[ncols].c=var::s;
-          vals[ncols++] = -gammaY1/dy2;
+          vals[ncols++] = -gammaX1/dx2;
           cols[ncols].i = i+1; cols[ncols].j = j; cols[ncols].k = k; cols[ncols].c=var::s;
+          vals[ncols++] = -gammaX2/dx2;
+          cols[ncols].i = i; cols[ncols].j = j-1; cols[ncols].k = k; cols[ncols].c=var::s;
+          vals[ncols++] = -gammaY1/dy2;
+          cols[ncols].i = i; cols[ncols].j = j+1; cols[ncols].k = k; cols[ncols].c=var::s;
           vals[ncols++] = -gammaY2/dy2;                    
           cols[ncols].i = i; cols[ncols].j = j; cols[ncols].k = k-1; cols[ncols].c=var::s;
           vals[ncols++] = -gammaZ1/dz2;
@@ -965,6 +965,7 @@ PetscErrorCode setMatrix(AppContext &ctx)
             MatSetValuesStencil(ctx.J,1,&rows,1,cols,vals,INSERT_VALUES);
           }
           else{ // Ghost.Bdy
+            SETERRQ(PETSC_COMM_SELF,1,"Not (yet) implemented");
             //MatStencil rows = {0}, cols[1] = {{0}};
             //PetscScalar vals[1];
             //rows.i = i; rows.j = j; rows.k = k;
