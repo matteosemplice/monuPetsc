@@ -367,22 +367,22 @@ PetscErrorCode findBoundaryPoints(
           yB = yA - SGN(R)*cc*diag_cell*ny_temp;
           zB = zA - SGN(R)*cc*diag_cell*nz_temp;
 
-          thtx=sx*(xB-coords[k][j][i].x)/(s-1)/dx_l;
-          thty=sy*(yB-coords[k][j][i].y)/(s-1)/dy_l;
-          thtz=sz*(zB-coords[k][j][i].z)/(s-1)/dz_l;
+          thtx=sx*(xB-xP)/(s-1)/dx_l;
+          thty=sy*(yB-yP)/(s-1)/dy_l;
+          thtz=sz*(zB-zP)/(s-1)/dz_l;
 
           if(s==2){
-            weights_x[0]=1-thtx, weights_x[1]=thtx;
-            weights_y[0]=1-thty, weights_y[1]=thty;
-            weights_z[0]=1-thtz, weights_z[1]=thtz;
+            weights_x[0] =1-thtx  , weights_x[1] =thtx;
+            weights_y[0] =1-thty  , weights_y[1] =thty;
+            weights_z[0] =1-thtz  , weights_z[1] =thtz;
             weights_dx[0]=-1./dx_l, weights_dx[1]=1./dx_l;
             weights_dy[0]=-1./dy_l, weights_dy[1]=1./dy_l;
             weights_dz[0]=-1./dz_l, weights_dz[1]=1./dz_l;
           }
           else if(s==3){
-            weights_x[0]=(1-2*thtx)*(1-thtx), weights_x[1]=4*thtx*(1-thtx), weights_x[2]=thtx*(2*thtx-1);
-            weights_y[0]=(1-2*thty)*(1-thty), weights_y[1]=4*thty*(1-thty), weights_y[2]=thty*(2*thty-1);
-            weights_z[0]=(1-2*thtz)*(1-thtz), weights_z[1]=4*thtz*(1-thtz), weights_z[2]=thtz*(2*thtz-1);
+            weights_x[0] =(1-2*thtx)*(1-thtx)    , weights_x[1] =4*thtx*(1-thtx)          , weights_x[2] =thtx*(2*thtx-1);
+            weights_y[0] =(1-2*thty)*(1-thty)    , weights_y[1] =4*thty*(1-thty)          , weights_y[2] =thty*(2*thty-1);
+            weights_z[0] =(1-2*thtz)*(1-thtz)    , weights_z[1] =4*thtz*(1-thtz)          , weights_z[2] =thtz*(2*thtz-1);
             weights_dx[0]=(-1.+(2*thtx-0.5))/dx_l, weights_dx[1]=(1.-2.*(2*thtx-0.5))/dx_l, weights_dx[2]=(2*thtx-0.5)/dx_l;
             weights_dy[0]=(-1.+(2*thty-0.5))/dy_l, weights_dy[1]=(1.-2.*(2*thty-0.5))/dy_l, weights_dy[2]=(2*thty-0.5)/dy_l;
             weights_dz[0]=(-1.+(2*thtz-0.5))/dz_l, weights_dz[1]=(1.-2.*(2*thtz-0.5))/dz_l, weights_dz[2]=(2*thtz-0.5)/dz_l;
@@ -404,7 +404,7 @@ PetscErrorCode findBoundaryPoints(
             }
           }
 
-          PetscScalar modlB=sqrt(Phi_dxB*Phi_dxB+Phi_dyB*Phi_dyB+Phi_dzB*Phi_dzB);
+          PetscScalar modlB=std::sqrt(Phi_dxB*Phi_dxB+Phi_dyB*Phi_dyB+Phi_dzB*Phi_dzB);
           nx_temp=Phi_dxB/modlB;
           ny_temp=Phi_dyB/modlB;
           nz_temp=Phi_dzB/modlB;
@@ -419,9 +419,9 @@ PetscErrorCode findBoundaryPoints(
           yI=(yA+yB)/2;
           zI=(zA+zB)/2;
 
-          thtx=sx*(xI-coords[k][j][i].x)/(s-1)/dx_l;
-          thty=sy*(yI-coords[k][j][i].y)/(s-1)/dy_l;
-          thtz=sz*(zI-coords[k][j][i].z)/(s-1)/dz_l;
+          thtx=sx*(xI-xP)/(s-1)/dx_l;
+          thty=sy*(yI-yP)/(s-1)/dy_l;
+          thtz=sz*(zI-zP)/(s-1)/dz_l;
 
           if(s==2){
               weights_x[0]=1-thtx, weights_x[1]=thtx;
