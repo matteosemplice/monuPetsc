@@ -34,8 +34,8 @@ inline void nGlob2IJK(AppContext ctx, int nGlob, int &i , int &j, int &k){
 PetscErrorCode findBoundaryPoints(
   AppContext &ctx,
   PetscInt level,
-  PetscInt xs, PetscInt ys, PetscInt zs,
-  PetscInt xm, PetscInt ym, PetscInt zm,
+  //PetscInt xs, PetscInt ys, PetscInt zs,
+  //PetscInt xm, PetscInt ym, PetscInt zm,
   DMDACoor3d ***coords,
   PetscScalar ***phi,
   DMDACoor3d ***N,
@@ -250,7 +250,7 @@ PetscErrorCode setBoundaryPoints(AppContext &ctx)
   ierr = DMDAVecGetArrayWrite(ctx.daCoord, ctx.BOUNDARY, &B); CHKERRQ(ierr);
 
   ierr = findBoundaryPoints(ctx,
-                            0,ctx.daInfo.xs,ctx.daInfo.ys,ctx.daInfo.zs,ctx.daInfo.xm,ctx.daInfo.ym,ctx.daInfo.zm,
+                            0,//ctx.daInfo.xs,ctx.daInfo.ys,ctx.daInfo.zs,ctx.daInfo.xm,ctx.daInfo.ym,ctx.daInfo.zm,
                             P,phi,N,B); CHKERRQ(ierr);
 
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.local_Phi, &phi); CHKERRQ(ierr);
@@ -301,8 +301,8 @@ PetscErrorCode setBoundaryPoints(AppContext &ctx)
 PetscErrorCode findBoundaryPoints(
   AppContext &ctx,
   PetscInt level,
-  PetscInt xs, PetscInt ys, PetscInt zs,
-  PetscInt xm, PetscInt ym, PetscInt zm,
+  //PetscInt xs, PetscInt ys, PetscInt zs,
+  //PetscInt xm, PetscInt ym, PetscInt zm,
   DMDACoor3d ***coords,
   PetscScalar ***phi,
   DMDACoor3d ***N,
@@ -326,9 +326,9 @@ PetscErrorCode findBoundaryPoints(
   const PetscScalar diag_cell=sqrt(dx_l*dx_l+dy_l*dy_l+dz_l*dz_l);
   PetscScalar nx_temp, ny_temp, nz_temp;
 
-  for (PetscInt k = zs; k < zs + zm; ++k)
-    for (PetscInt j = ys; j < ys + ym; ++j)
-      for (PetscInt i = xs; i < xs + xm; ++i) {
+  for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
+    for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
+      for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
 
         PetscScalar R=phi[k][j][i];
         nx_temp=N[k][j][i].x, ny_temp=N[k][j][i].y, nz_temp=N[k][j][i].z;        
@@ -460,6 +460,8 @@ PetscErrorCode findBoundaryPoints(
         B[k][j][i].y=yI;
         B[k][j][i].z=zI;
       }
+    }
+  }
   return ierr;
 }
 
