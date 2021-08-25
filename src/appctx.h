@@ -3,11 +3,57 @@
 
 #include <petscdmda.h>
 
-#define stWidth 1
+#include <vector>
+
+#define stWidth 4
 
 enum block {ss=0,sc=1,cs=2,cc=3};
 enum var {s=0,c=1};
 typedef struct{ PetscScalar s,c;} data_type;
+
+typedef struct ghost {
+    int index;
+    double xc;
+    double yc;
+    double zc;
+    double xb;
+    double yb;
+    double zb;
+    int stencil[27];
+    //coeff per Dirichlet
+    double coeffsD[27];
+    //coeff per Neumann
+    double coeffs_dx[27];
+    double coeffs_dy[27];
+    double coeffs_dz[27];
+    //normale nel punto bordo
+    double nx;
+    double ny;
+    double nz;
+    double dtau;
+} ghost;
+
+typedef struct ghost_Bdy {
+    int index;
+     double xc;
+     double yc;
+     double zc;
+     double xb;
+     double yb;
+     double zb;     
+     int type;
+     int stencil[3];
+     double coeffsD[3];
+     double coeffsN[3];
+     double dtau;
+} ghost_Bdy;
+
+template< class T1, class T2>
+struct Phi12Bdy_struct
+{
+    std::vector<T1> Phi1;
+    std::vector<T2> Bdy;
+};
 
 //Dati simulazione Semplice, SISC(2010)
 class sulfationProblem{
@@ -29,13 +75,34 @@ class sulfationProblem{
 };
 
 typedef struct {
-  PetscInt Nx,Ny,Nz; //no. of cells
-  PetscScalar dx; //cell size
+  PetscInt nx,ny,nz; //no. of cells
+  PetscInt nnx,nny,nnz,nn123; //no. of points in DMDA
+  PetscScalar xmin, xmax, ymin, ymax, zmin, zmax; //domain bounding box
+  PetscScalar dx,dy,dz; //cell size
   PetscInt rank;  //rank of processor
-  DM daAll;       //composite DA
+  DM daAll;       //global DA
   DMDALocalInfo daInfo;//, daInfoC, daInfoS;
   IS *is;
   DM *daField;
+
+  DM daCoord;     //DA for coordinates
+  Vec coordsLocal;
+
+  Vec Phi, local_Phi; //levelset function
+  Vec NORMALS,BOUNDARY;
+  Vec NODETYPE, local_NodeType;
+  Vec Sigma; //dovrebbero essere superflui...
+  Vec RHS;
+
+  //MG
+  //- multigrid-levels:
+    //multigrid-levels > 0 ==> the solver is multigrid
+    //multigrid-levels = 0 ==> the solver is ksp with matrix-free set in setMatrixShell()
+    //multigrid-levels = -1 ==> the solver is ksp with matrix set on 3D DMDA in setMatrix()
+    //multigrid-levels = -2 ==> the solver is ksp with matrix set in a LEX order grid in setMatrixSEQ() (WARNING: it does not work with more than 1 proc)
+  int mgLevels;
+  int solver;
+  Phi12Bdy_struct<ghost,ghost_Bdy> Ghost;
 
   PetscInt dim=3;
 
@@ -43,10 +110,11 @@ typedef struct {
   //Mat Jb[4]; //Jacobian blocks
 
   Vec U,U0,F,F0;
-  Vec Uloc,PHIloc;
+  Vec Uloc,POROSloc;
   sulfationProblem pb;
   PetscScalar theta; //theta method
   PetscScalar dt; //time step
+
 } AppContext;
 
 PetscErrorCode cleanUpContext(AppContext & ctx);

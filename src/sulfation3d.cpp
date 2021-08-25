@@ -20,7 +20,7 @@ PetscErrorCode FormJacobian3d(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   ierr = DMGlobalToLocalBegin(ctx->daAll,U,INSERT_VALUES,ctx->Uloc); CHKERRQ(ierr);
   ierr = DMGlobalToLocalEnd  (ctx->daAll,U,INSERT_VALUES,ctx->Uloc); CHKERRQ(ierr);
   ierr = DMDAVecGetArray(ctx->daAll,ctx->Uloc,&u); CHKERRQ(ierr);
-  ierr = DMDAVecGetArray(ctx->daField[var::c],ctx->PHIloc,&phi); CHKERRQ(ierr);
+  ierr = DMDAVecGetArray(ctx->daField[var::c],ctx->POROSloc,&phi); CHKERRQ(ierr);
   //Calcolo di phi
   for (PetscInt k=ctx->daInfo.gzs; k<ctx->daInfo.gzs+ctx->daInfo.gzm; k++)
     for (PetscInt j=ctx->daInfo.gys; j<ctx->daInfo.gys+ctx->daInfo.gym; j++)
@@ -217,7 +217,7 @@ PetscErrorCode FormJacobian3d(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   ierr = MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
 
   //Ripristino vettori della U e della PHI
-  ierr = DMDAVecRestoreArray(ctx->daField[var::c],ctx->PHIloc,&phi); CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArray(ctx->daField[var::c],ctx->POROSloc,&phi); CHKERRQ(ierr);
   ierr = DMDAVecRestoreArray(ctx->daAll,ctx->Uloc,&u); CHKERRQ(ierr);
 
   return ierr;
@@ -293,7 +293,7 @@ PetscErrorCode FormRHS3d(Vec F0,void *_ctx){
   ierr = DMGlobalToLocalEnd  (ctx->daAll,ctx->U0,INSERT_VALUES,ctx->Uloc); CHKERRQ(ierr);
 
   ierr = DMDAVecGetArray(ctx->daAll,ctx->Uloc,&u0); CHKERRQ(ierr);
-  ierr = DMDAVecGetArray(ctx->daField[var::c],ctx->PHIloc,&phi0); CHKERRQ(ierr);
+  ierr = DMDAVecGetArray(ctx->daField[var::c],ctx->POROSloc,&phi0); CHKERRQ(ierr);
 
   //Calcolo di phi
   for (PetscInt k=ctx->daInfo.gzs; k<ctx->daInfo.gzs+ctx->daInfo.gzm; k++)
@@ -305,7 +305,7 @@ PetscErrorCode FormRHS3d(Vec F0,void *_ctx){
   formF3d(u0,phi0,f0,ctx->dt*ctx->theta,ctx);
 
   //Ripristino vettori della U e della PHI
-  ierr = DMDAVecRestoreArray(ctx->daField[var::c],ctx->PHIloc,&phi0); CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArray(ctx->daField[var::c],ctx->POROSloc,&phi0); CHKERRQ(ierr);
   ierr = DMDAVecRestoreArray(ctx->daAll,ctx->Uloc,&u0); CHKERRQ(ierr);
 
   //Ripristino vettori della F
@@ -331,7 +331,7 @@ PetscErrorCode FormFunction3d(SNES snes,Vec U,Vec F,void *_ctx){
   //PetscPrintf(PETSC_COMM_WORLD,"=================\n");
 
   ierr = DMDAVecGetArray(ctx->daAll,ctx->Uloc,&u); CHKERRQ(ierr);
-  ierr = DMDAVecGetArray(ctx->daField[var::c],ctx->PHIloc,&phi); CHKERRQ(ierr);
+  ierr = DMDAVecGetArray(ctx->daField[var::c],ctx->POROSloc,&phi); CHKERRQ(ierr);
 
   //Calcolo di phi
   for (PetscInt k=ctx->daInfo.gzs; k<ctx->daInfo.gzs+ctx->daInfo.gzm; k++)
@@ -343,7 +343,7 @@ PetscErrorCode FormFunction3d(SNES snes,Vec U,Vec F,void *_ctx){
   formF3d(u,phi,f,-ctx->dt*(1.-ctx->theta),ctx);
 
   //Ripristino vettori della U e della PHI
-  ierr = DMDAVecRestoreArray(ctx->daField[var::c],ctx->PHIloc,&phi); CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArray(ctx->daField[var::c],ctx->POROSloc,&phi); CHKERRQ(ierr);
   ierr = DMDAVecRestoreArray(ctx->daAll,ctx->Uloc,&u); CHKERRQ(ierr);
 
   //Ripristino vettori della F
@@ -352,12 +352,11 @@ PetscErrorCode FormFunction3d(SNES snes,Vec U,Vec F,void *_ctx){
   return ierr;
 }
 
-PetscErrorCode setU03d(Vec U,void *_ctx){
+PetscErrorCode setU03d(Vec U,AppContext & ctx){
   PetscErrorCode ierr;
-  AppContext * ctx = (AppContext *) _ctx;
 
-  ierr = VecISSet(ctx->U0,ctx->is[var::s],ctx->pb.s0); CHKERRQ(ierr);
-  ierr = VecISSet(ctx->U0,ctx->is[var::c],ctx->pb.c0); CHKERRQ(ierr);
+  ierr = VecISSet(ctx.U0,ctx.is[var::s],ctx.pb.s0); CHKERRQ(ierr);
+  ierr = VecISSet(ctx.U0,ctx.is[var::c],ctx.pb.c0); CHKERRQ(ierr);
 
   return ierr;
 }

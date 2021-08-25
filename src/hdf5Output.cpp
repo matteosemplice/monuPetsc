@@ -19,17 +19,22 @@ PetscErrorCode WriteHDF5(AppContext &ctx, const char * basename, Vec U){
   ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,hdf5name,FILE_MODE_WRITE,&viewer); CHKERRQ(ierr);
   Vec uField;
 
+  //s
   ierr = DMGetGlobalVector(ctx.daField[var::s], &uField); CHKERRQ(ierr);
   ierr = VecStrideGather(U,var::s,uField,INSERT_VALUES); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "S");
   ierr = VecView(uField,viewer); CHKERRQ(ierr);
   ierr = DMRestoreGlobalVector(ctx.daField[var::s], &uField); CHKERRQ(ierr);
 
+  //c
   ierr = DMGetGlobalVector(ctx.daField[var::c], &uField); CHKERRQ(ierr);
   ierr = VecStrideGather(U,var::c,uField,INSERT_VALUES); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "C");
   ierr = VecView(uField,viewer); CHKERRQ(ierr);
   ierr = DMRestoreGlobalVector(ctx.daField[var::c], &uField); CHKERRQ(ierr);
+
+  //levelset function
+  ierr = VecView(ctx.Phi,viewer); CHKERRQ(ierr);
 
   ierr = PetscViewerDestroy(&viewer); CHKERRQ(ierr);
 
@@ -50,29 +55,32 @@ PetscErrorCode WriteHDF5(AppContext &ctx, const char * basename, Vec U){
     fprintf(file, "    <Grid GridType=\"Uniform\" Name=\"domain\">\n");
     switch (ctx.dim){
     case 2:
-    fprintf(file, "      <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"%d %d\"/>\n",ctx.Nx,ctx.Nx);
+    fprintf(file, "      <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"%d %d\"/>\n",ctx.nx,ctx.ny);
     fprintf(file, "      <Geometry GeometryType=\"ORIGIN_DXDY\">\n");
     fprintf(file, "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">0.0 0.0</DataItem>\n");
-    fprintf(file, "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">%f %f</DataItem>\n",ctx.dx,ctx.dx);
+    fprintf(file, "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">%f %f</DataItem>\n",ctx.dx,ctx.dy);
     fprintf(file, "      </Geometry>\n");
     fprintf(file, "      <Attribute Name=\"SO2\" Center=\"Node\" AttributeType=\"Scalar\">\n");
-    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d\">%s:/S</DataItem>\n",ctx.Nx,ctx.Nx,hdf5name);
+    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d\">%s:/S</DataItem>\n",ctx.nx,ctx.ny,hdf5name);
     fprintf(file, "      </Attribute>\n");
     fprintf(file, "      <Attribute Name=\"CaCO3\" Center=\"Node\" AttributeType=\"Scalar\">\n");
-    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d\">%s:/C</DataItem>\n",ctx.Nx,ctx.Nx,hdf5name);
+    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d\">%s:/C</DataItem>\n",ctx.nx,ctx.ny,hdf5name);
     fprintf(file, "      </Attribute>\n");
     break;
     case 3:
-    fprintf(file, "      <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"%d %d %d\"/>\n",ctx.Nx,ctx.Nx,ctx.Nx);
+    fprintf(file, "      <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"%d %d %d\"/>\n",ctx.nx,ctx.ny,ctx.nz);
     fprintf(file, "      <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n");
     fprintf(file, "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">0.0 0.0 0.0</DataItem>\n");
-    fprintf(file, "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">%f %f %f</DataItem>\n",ctx.dx,ctx.dx,ctx.dx);
+    fprintf(file, "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">%f %f %f</DataItem>\n",ctx.dx,ctx.dy,ctx.dz);
     fprintf(file, "      </Geometry>\n");
     fprintf(file, "      <Attribute Name=\"SO2\" Center=\"Node\" AttributeType=\"Scalar\">\n");
-    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d %d\">%s:/S</DataItem>\n",ctx.Nx,ctx.Nx,ctx.Nx,hdf5name);
+    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d %d\">%s:/S</DataItem>\n",ctx.nx,ctx.ny,ctx.nz,hdf5name);
     fprintf(file, "      </Attribute>\n");
     fprintf(file, "      <Attribute Name=\"CaCO3\" Center=\"Node\" AttributeType=\"Scalar\">\n");
-    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d %d\">%s:/C</DataItem>\n",ctx.Nx,ctx.Nx,ctx.Nx,hdf5name);
+    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d %d\">%s:/C</DataItem>\n",ctx.nx,ctx.ny,ctx.nz,hdf5name);
+    fprintf(file, "      </Attribute>\n");
+    fprintf(file, "      <Attribute Name=\"Phi\" Center=\"Node\" AttributeType=\"Scalar\">\n");
+    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d %d\">%s:/Phi</DataItem>\n",ctx.nx,ctx.ny,ctx.nz,hdf5name);
     fprintf(file, "      </Attribute>\n");
     break;
     default:
@@ -85,7 +93,6 @@ PetscErrorCode WriteHDF5(AppContext &ctx, const char * basename, Vec U){
 
     fclose(file);
   }
-
 
   return 0;
 }

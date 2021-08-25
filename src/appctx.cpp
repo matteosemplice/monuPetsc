@@ -10,9 +10,17 @@ PetscErrorCode cleanUpContext(AppContext & ctx){
   ierr= VecDestroy(&ctx.F ); CHKERRQ(ierr);
   ierr= VecDestroy(&ctx.F0); CHKERRQ(ierr);
   ierr= VecDestroy(&ctx.Uloc); CHKERRQ(ierr);
-  ierr= VecDestroy(&ctx.PHIloc); CHKERRQ(ierr);
+  ierr= VecDestroy(&ctx.POROSloc); CHKERRQ(ierr);
 
   ierr = DMDestroy(&ctx.daAll); CHKERRQ(ierr);
+
+
+  ierr = VecDestroy(&ctx.Phi); CHKERRQ(ierr);
+  ierr = VecDestroy(&ctx.local_Phi); CHKERRQ(ierr);
+  ierr = VecDestroy(&ctx.NORMALS); CHKERRQ(ierr);
+  ierr = VecDestroy(&ctx.BOUNDARY); CHKERRQ(ierr);
+  ierr = VecDestroy(&ctx.NODETYPE); CHKERRQ(ierr);
+
   //DMDA for fields
   ierr = DMDestroy(&ctx.daField[0]); CHKERRQ(ierr);
   ierr = DMDestroy(&ctx.daField[1]); CHKERRQ(ierr);
@@ -23,7 +31,6 @@ PetscErrorCode cleanUpContext(AppContext & ctx){
   PetscFree(ctx.is);
 
   ierr = MatDestroy(&ctx.J); CHKERRQ(ierr);
-
 
   return ierr;
 }
