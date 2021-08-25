@@ -1,5 +1,26 @@
 static char help[] = "Cartesian monument sulfation\n";
 
+/*
+ * mpirun -np NPROC ./monuCart -options_file ../data.txt [altre opzioni]
+ *
+ * dove data.txt contiene le opzioni principali. Ad esempio
+ *
+ * ===== data.txt =====
+ * -Nx 32
+ * -Ny 32
+ * -Nz 32
+ * -xmin -1
+ * -xmax 1
+ * -ymin -1
+ * -ymax 1
+ * -zmin -1
+ * -zmax 1
+ * -mglevels -1
+ * =====================
+ *
+ * Le opzioni date in fondo sovrascrivono quelle nel file data.txt
+ */
+
 #include <petscversion.h>
 #include <petscdmda.h>
 #include <petscviewer.h>
