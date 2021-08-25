@@ -1,5 +1,8 @@
 #include "levelSetTest.h"
+#include "levelSet.h"
 #include "test.h"
+
+#include <cassert>
 
 PetscErrorCode setRHS(AppContext &ctx)
 {
@@ -18,7 +21,7 @@ PetscErrorCode setRHS(AppContext &ctx)
     for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
       for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
         //PetscInt kg = i + j * nn1 + k * nn1 * nn2;
-        if(nodetype[k][j][i] == -1){
+        if(nodetype[k][j][i] == N_INSIDE){
             // ------------------------------
             //Inside: set r.h.s. function f
             // ------------------------------
@@ -52,8 +55,9 @@ PetscErrorCode setRHS(AppContext &ctx)
             rhs[k][j][i][var::c]=c_(B[k][j][i].x, B[k][j][i].y, B[k][j][i].z);
           }
         } else {
-            rhs[k][j][i][var::s]=0.;//s_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
-            rhs[k][j][i][var::c]=0.;//c_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
+          assert(nodetype[k][j][i] ==  N_INACTIVE);
+          rhs[k][j][i][var::s]=0.;//s_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
+          rhs[k][j][i][var::c]=0.;//c_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
         }
       }
     }
@@ -174,19 +178,14 @@ PetscErrorCode setExact(AppContext &ctx, Vec EXA)
     for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
       for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
         //PetscInt kg = i + j * nn1 + k * nn1 * nn2;
-        if(nodetype[k][j][i] > -4){
-            // ------------------------------
-            //Inside: set r.h.s. function f
-            // ------------------------------
-            //PetscPrintf(PETSC_COMM_SELF,"#%d] Inner (%d,%d,%d) at (%f,%f,%f)\n",
-              //ctx.rank,i,j,k,P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
-            
-            exa[k][j][i][var::s]=s_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
-            exa[k][j][i][var::c]=c_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
+        if(nodetype[k][j][i] == N_INACTIVE){
+          exa[k][j][i][var::s]=0.;
+          exa[k][j][i][var::c]=0.;
         }
         else{
-            exa[k][j][i][var::s]=0.;
-            exa[k][j][i][var::c]=0.;
+          //Any non-inactive grid point (internal, ghost-Phi and ghost-Bdy)
+          exa[k][j][i][var::s]=s_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
+          exa[k][j][i][var::c]=c_(P[k][j][i].x, P[k][j][i].y, P[k][j][i].z);
         }
       }
     }
