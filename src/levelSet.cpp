@@ -396,10 +396,10 @@ PetscErrorCode findBoundaryPoints(
             for(int jj=0;jj<s;++jj){
               for(int ii=0;ii<s;++ii){
                 PetscScalar Phi_stencil=phi[k+sz*kk][j+sy*jj][i+sx*ii];
-                PhiB+=Phi_stencil*weights_x[jj]*weights_y[ii]*weights_z[kk];
-                Phi_dxB+=Phi_stencil*sx*weights_dx[jj]*weights_y[ii]*weights_z[kk];
-                Phi_dyB+=Phi_stencil*sy*weights_x[jj]*weights_dy[ii]*weights_z[kk];
-                Phi_dzB+=Phi_stencil*sz*weights_x[jj]*weights_y[ii]*weights_dz[kk];
+                PhiB+=Phi_stencil*weights_x[ii]*weights_y[jj]*weights_z[kk];
+                Phi_dxB+=Phi_stencil*sx*weights_dx[ii]*weights_y[jj] *weights_z[kk];
+                Phi_dyB+=Phi_stencil*sy*weights_x[ii] *weights_dy[jj]*weights_z[kk];
+                Phi_dzB+=Phi_stencil*sz*weights_x[ii] *weights_y[jj] *weights_dz[kk];
               }
             }
           }
