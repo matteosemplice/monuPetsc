@@ -553,8 +553,8 @@ PetscErrorCode setGhost(AppContext &ctx)
 
     PetscPrintf(PETSC_COMM_WORLD,"level=%d\n",level);
 
-    for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++)
-      for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++)
+    for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
+      for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
         for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
           if(nodetype[k][j][i]==N_GHOSTPHI1){
             //PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) --> %f\n",i,j,k,nodetype[k][j][i]);
@@ -625,6 +625,8 @@ PetscErrorCode setGhost(AppContext &ctx)
             }
           }
         }
+      }
+    }
 
     if(level==-1){ 
       ierr = DMDAVecRestoreArrayWrite(ctx.daField[var::s], ctx.local_NodeType, &nodetype); CHKERRQ(ierr);
@@ -656,7 +658,7 @@ PetscErrorCode setGhost(AppContext &ctx)
 PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   PetscScalar ***phi, PetscScalar ***nodetype,
   DMDACoor3d ***P,
-  double& xC, double& yC, double& zC,
+  double& xC, double& yC, double& zC,//boundary point
   int stencil[], double coeffsD[], double coeffs_dx[], double coeffs_dy[], double coeffs_dz[],
   double& nxb, double& nyb, double& nzb,
   int upwind)
@@ -714,10 +716,10 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
     for(int jj=0;jj<3;++jj)
       for(int ii=0;ii<3;++ii){
         int ind=ii+3*jj+9*kk;
-        coeffsD[ind]=weights_x[ii]*weights_y[jj]*weights_z[kk];
-        coeffs_dx[ind]=sx*weights_y[jj]*weights_dx[ii]*weights_z[kk];
-        coeffs_dy[ind]=sy*weights_dy[jj]*weights_x[ii]*weights_z[kk];
-        coeffs_dz[ind]=sz*weights_y[jj]*weights_x[ii]*weights_dz[kk];
+        coeffsD[ind]  =   weights_x[ii] *weights_y[jj] *weights_z[kk];
+        coeffs_dx[ind]=sx*weights_dx[ii]*weights_y[jj] *weights_z[kk];
+        coeffs_dy[ind]=sy*weights_x[ii] *weights_dy[jj]*weights_z[kk];
+        coeffs_dz[ind]=sz*weights_x[ii] *weights_y[jj] *weights_dz[kk];
       }
 
   //calcolo normali sul bordo
@@ -823,7 +825,6 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
         coeffsD[cont]=coeffs_dx[cont]=coeffs_dy[cont]=coeffs_dz[cont]=0;
     coeffsD[0]=1;//errore? devo usare indice del ghost
 
-    //PetscPrintf(PETSC_COMM_WORLD,"maremmamaiala 1\n");
     int kg_1=stencil[1];
     int i_1,j_1,k_1;
     nGlob2IJK(ctx,kg_1,i_1,j_1,k_1);
@@ -834,7 +835,7 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
     int i_9,j_9,k_9;
     nGlob2IJK(ctx,kg_9,i_9,j_9,k_9);
 
-    //PetscPrintf(PETSC_COMM_WORLD,"maremmamaiala 2\n");
+    //PetscPrintf(PETSC_COMM_WORLD,"maremmamaiala\n");
     //PetscPrintf(PETSC_COMM_WORLD,"%d (%d,%d,%d)\n",kg_1,i_1,j_1,k_1);
     //PetscPrintf(PETSC_COMM_WORLD,"%d (%d,%d,%d)\n",kg_3,i_3,j_3,k_3);
     //PetscPrintf(PETSC_COMM_WORLD,"%d (%d,%d,%d)\n",kg_9,i_9,j_9,k_9);
