@@ -57,7 +57,7 @@ PetscErrorCode WriteHDF5(AppContext &ctx, const char * basename, Vec U){
     case 2:
     fprintf(file, "      <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"%d %d\"/>\n",ctx.nx,ctx.ny);
     fprintf(file, "      <Geometry GeometryType=\"ORIGIN_DXDY\">\n");
-    fprintf(file, "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">0.0 0.0</DataItem>\n",ctx.xmin,ctx.ymin);
+    fprintf(file, "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">%f %f</DataItem>\n",ctx.xmin,ctx.ymin);
     fprintf(file, "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">%f %f</DataItem>\n",ctx.dx,ctx.dy);
     fprintf(file, "      </Geometry>\n");
     fprintf(file, "      <Attribute Name=\"SO2\" Center=\"Node\" AttributeType=\"Scalar\">\n");
