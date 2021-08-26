@@ -31,6 +31,11 @@ inline void nGlob2IJK(AppContext ctx, int nGlob, int &i , int &j, int &k){
   i     = nGlob % ctx.nnx;
 }
 
+typedef struct{
+  PetscScalar x,y,z;
+  unsigned int n;
+} shiftedStencil;
+
 PetscErrorCode findBoundaryPoints(
   AppContext &ctx,
   PetscInt level,
@@ -47,7 +52,8 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   double& xC, double& yC, double& zC,
   int stencil[], double coeffsD[], double coeffs_dx[], double coeffs_dy[], double coeffs_dz[],
   double& nxb, double& nyb, double& nzb,
-  int upwind);
+  int upwind,
+  std::vector<shiftedStencil> &critici);
 
 
 PetscErrorCode setPhi(AppContext &ctx)
@@ -465,9 +471,56 @@ PetscErrorCode findBoundaryPoints(
   return ierr;
 }
 
+void scriviListaPunti(std::vector<shiftedStencil> lista, const char * basename){
+  FILE *file;
+  char  filename[256];
+  sprintf(filename, "%s.vtu",basename);
+  file = fopen(filename, "w");
+  fprintf(file, "<VTKFile type=\"UnstructuredGrid\" byte_order=\"LittleEndian\">\n");
+
+  fprintf(file, "<UnstructuredGrid>\n");
+  fprintf(file, "  <Piece  NumberOfPoints=\"%d\" NumberOfCells=\"0\">\n",
+                lista.size());
+  fprintf(file, "    <PointData Scalars=\"nShifts\"> \n");
+  fprintf(file, "      <DataArray type=\"UInt8\" Name=\"nShifts\">\n        ");
+  for (auto it = lista.begin(); it != lista.end(); it++) {
+    fprintf(file, "        %d\n", it->n);
+  }
+  fprintf(file, "      </DataArray> \n");
+  fprintf(file, "    </PointData> \n");
+  fprintf(file, "    <CellData> \n");
+  fprintf(file, "    </CellData> \n");
+
+  fprintf(file, "    <Points>\n");
+  fprintf(file, "      <DataArray name=\"Position\" type=\"Float32\" NumberOfComponents=\"3\"  format=\"ascii\"> \n");
+  for (auto it = lista.begin(); it != lista.end(); it++) {
+    fprintf(file, "        %f %f %f\n", it->x, it->y, it->z);
+  }
+  fprintf(file, "      </DataArray> \n");
+  fprintf(file, "    </Points>\n");
+
+  fprintf(file, "    <Cells>\n");
+  fprintf(file, "      <DataArray type=\"Int32\" Name=\"connectivity\">");
+  fprintf(file, "      </DataArray> \n");
+
+  fprintf(file, "      <DataArray type=\"Int32\" Name=\"offsets\">");
+  fprintf(file, "      </DataArray> \n");
+
+  fprintf(file, "      <DataArray type=\"UInt8\" Name=\"types\">\n        ");
+  fprintf(file, "      </DataArray> \n");
+  fprintf(file, "    </Cells>\n");
+
+  fprintf(file, "   </Piece> \n");
+  fprintf(file, "</UnstructuredGrid>\n");
+  fprintf(file, "</VTKFile>\n");
+  fclose(file);
+}
 
 PetscErrorCode setGhost(AppContext &ctx)
 {
+  std::vector<shiftedStencil> critici;
+  critici.resize(0);
+
   PetscErrorCode ierr=0;
   PetscPrintf(PETSC_COMM_WORLD, "Setting ghost stencils ...\n");
   int stencil[27];
@@ -566,7 +619,7 @@ PetscErrorCode setGhost(AppContext &ctx)
             current.zb=B[k][j][i].z;
             //setGhostStencil(kg, phi, nodetype, x_p[level_temp], y_p[level_temp], z_p[level_temp], current.xb, current.yb, current.zb, stencil, coeffsD, coeffs_dx, coeffs_dy, coeffs_dz, nxb, nyb, nzb, 1);
             if (level==-1)
-              setGhostStencil(ctx,kg, phi, nodetype, P, current.xb, current.yb, current.zb, stencil, coeffsD, coeffs_dx, coeffs_dy, coeffs_dz, nxb, nyb, nzb, 1);
+              setGhostStencil(ctx,kg, phi, nodetype, P, current.xb, current.yb, current.zb, stencil, coeffsD, coeffs_dx, coeffs_dy, coeffs_dz, nxb, nyb, nzb, 1, critici);
             else
               {SETERRQ(PETSC_COMM_SELF,1,"not yet implemented"); CHKERRQ(ierr);}
             current.nx=nxb;
@@ -652,6 +705,10 @@ PetscErrorCode setGhost(AppContext &ctx)
     //ierr = DMRestoreLocalVector(CartesianGrid3D,&local_NodeType);
     }
     PetscPrintf(PETSC_COMM_WORLD,"set ghost stencils ...DONE\n");
+
+    PetscPrintf(PETSC_COMM_SELF,"------- %d punti critici\n",critici.size());
+    scriviListaPunti(critici,"critici");
+
     return ierr;
 }
 
@@ -661,7 +718,8 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   double& xC, double& yC, double& zC,//boundary point
   int stencil[], double coeffsD[], double coeffs_dx[], double coeffs_dy[], double coeffs_dz[],
   double& nxb, double& nyb, double& nzb,
-  int upwind)
+  int upwind,
+  std::vector<shiftedStencil> &critici)
 {
   PetscInt nn1 = ctx.nnx;
   PetscInt nn2 = ctx.nny;
@@ -772,6 +830,7 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
     for(int j=0; j<3; ++j)
       Face[3*i+j]=s1*i+s2*j;
 
+  unsigned int nShifts=0;
   for(int i=0; i<9; ++i){
     int ind_face=Face[i];
     for(int pt=0; pt<2;++pt)
@@ -786,6 +845,9 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
         break;
       else
       {
+        PetscPrintf(PETSC_COMM_SELF,"Shift faccia direzione %d a (%f,%f,%f)\n",direction,xC,yC,zC);
+        nShifts++;
+
         stencil[ind]+=sxyz*3*nn1nn2;
         double cD=coeffsD[ind],    cdx=coeffs_dx[ind],    cdy=coeffs_dy[ind],       cdz=coeffs_dz[ind];
         coeffsD[ind]=0;     coeffs_dx[ind]=0;      coeffs_dy[ind]=0;        coeffs_dz[ind]=0;
@@ -802,6 +864,9 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
       }
     }
   }
+
+  if (nShifts>0)
+    critici.push_back({xC,yC,zC,nShifts});
 
   //controllo se sono rimasti altri punti non interni nè ghost
   std::bitset<27> mask;
