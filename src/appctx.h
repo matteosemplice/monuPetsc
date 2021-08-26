@@ -12,13 +12,15 @@ enum var {s=0,c=1};
 typedef struct{ PetscScalar s,c;} data_type;
 
 typedef struct ghost {
-    int index;
-    double xc;
-    double yc;
-    double zc;
+    int index;//indice del punto ghost
+    //double xc; //non sembra usato...
+    //double yc; //non sembra usato...
+    //double zc; //non sembra usato...
+    //boundary point
     double xb;
     double yb;
     double zb;
+    // indici celle dello stencil
     int stencil[27];
     //coeff per Dirichlet
     double coeffsD[27];
