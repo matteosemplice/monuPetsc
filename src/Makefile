@@ -30,3 +30,8 @@ testHDF5: testHDF5.o appctx.h
 
 %.o: %.cpp %.h appctx.h
 	-${PETSC_CXXCOMPILE_SINGLE} -c ${DEFS} -o $@ $*.cpp
+
+test.cpp: test.c
+
+test.c: test0.py
+	-./test0.py
