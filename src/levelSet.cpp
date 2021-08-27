@@ -865,6 +865,11 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
     }
   }
 
+  //PetscScalar interpError = checkInterp(ctx,P,xC,yC,zC,stencil,coeffsD);
+  //if (fabs(interpError)>1e-15){
+    //PetscPrintf(PETSC_COMM_SELF,"Interpolation error for quadratic function at %d: %e\n",kg,interpError);
+  //}
+
   if (nShifts>0)
     critici.push_back({xC,yC,zC,nShifts});
 
@@ -1067,6 +1072,20 @@ PetscErrorCode setMatrix(AppContext &ctx)
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);
 
   return ierr;
+}
+
+PetscScalar checkInterp(AppContext &ctx,DMDACoor3d ***P,PetscScalar xC,PetscScalar yC,PetscScalar zC,int stencil[], double coeffsD[]){
+  PetscScalar value=0.;
+  for (int p=0; p<27;p++){
+    int i,j,k;
+    nGlob2IJK(ctx,stencil[p],i,j,k);
+    const PetscScalar xP=P[k][j][i].x;
+    const PetscScalar yP=P[k][j][i].y;
+    const PetscScalar zP=P[k][j][i].z;
+    const PetscScalar pValue = 1.0 + (xP-xC)*(xP-xC) + (yP-yC)*(yP-yC)+ (zP-zC)*(zP-zC);
+    value += coeffsD[p] * pValue;
+  }
+  return (value-1.0);
 }
 
 PetscScalar Phi1_(DMDACoor3d p)

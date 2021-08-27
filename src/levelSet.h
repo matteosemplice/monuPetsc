@@ -14,4 +14,6 @@ PetscErrorCode setBoundaryPoints(AppContext &ctx);
 PetscErrorCode setGhost(AppContext &ctx);
 PetscErrorCode setMatrix(AppContext &ctx);
 
+PetscScalar checkInterp(AppContext &ctx,DMDACoor3d ***P,PetscScalar xC,PetscScalar yC,PetscScalar zC,int stencil[], double coeffsD[]);
+
 #endif
