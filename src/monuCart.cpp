@@ -121,17 +121,6 @@ int main(int argc, char **argv) {
   ierr = setBoundaryPoints(ctx); CHKERRQ(ierr);
   ierr = setGhost(ctx); CHKERRQ(ierr);
 
-  {
-    DMDACoor3d ***P;
-    ierr = DMDAVecGetArrayRead(ctx.daCoord, ctx.coordsLocal, &P); CHKERRQ(ierr);
-    for (auto it = ctx.Ghost.Phi1.begin(); it != ctx.Ghost.Phi1.end(); it++) {
-      PetscScalar interpError = checkInterp(ctx,P,it->xb,it->yb,it->zb,it->stencil,it->coeffsD);
-      if (fabs(interpError)>1e-15)
-        PetscPrintf(PETSC_COMM_SELF,"MMMM Interpolation error for quadratic function at %d: %e\n",it->index,interpError);
-    }
-    ierr = DMDAVecRestoreArrayRead(ctx.daCoord, ctx.coordsLocal, &P); CHKERRQ(ierr);
-  }
-
   //// Create solvers
   //ierr = SNESCreate(PETSC_COMM_WORLD,&snes); CHKERRQ(ierr);
   //ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
@@ -154,7 +143,6 @@ int main(int argc, char **argv) {
   ierr = VecDuplicate(ctx.U,&ctx.F0); CHKERRQ(ierr);
   ierr = DMCreateLocalVector(ctx.daAll,&ctx.Uloc); CHKERRQ(ierr);
   ierr = DMCreateLocalVector(ctx.daField[var::c],&ctx.POROSloc); CHKERRQ(ierr);
-  ierr = DMCreateLocalVector(ctx.daField[var::c],&ctx.Sigma); CHKERRQ(ierr);
 
   ierr = DMCreateGlobalVector(ctx.daField[var::s], &ctx.Sigma); CHKERRQ(ierr);
   ierr = setSigma(ctx); CHKERRQ(ierr);
@@ -299,6 +287,7 @@ int main(int argc, char **argv) {
   //ierr = WriteHDF5(ctx, "finale", ctx.U);
 
   //ierr = SNESDestroy(&snes); CHKERRQ(ierr);
+  ierr = KSPDestroy(&kspJ); CHKERRQ(ierr);
   ierr = cleanUpContext(ctx); CHKERRQ(ierr);
   ierr = PetscFinalize();
   return ierr;

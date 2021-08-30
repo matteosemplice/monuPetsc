@@ -99,6 +99,7 @@ PetscErrorCode setSigma(AppContext &ctx)
   }
 
   ierr = DMDAVecRestoreArrayWrite(ctx.daField[var::s], ctx.Sigma, &sigma);
+  ierr = DMDAVecRestoreArrayRead(ctx.daCoord,ctx.coordsLocal,&P); CHKERRQ(ierr);
 
     //for(PetscInt level=0;level<levels;++level){
         //ierr = DMCreateGlobalVector(CartesianGrid3D_p[level], &Sigma_p[level]);
@@ -139,6 +140,7 @@ PetscErrorCode setGamma(AppContext &ctx)
     }
   }
   ierr = DMDAVecRestoreArrayWrite(ctx.daField[var::s], Gamma, &gamma); CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayRead(ctx.daCoord,ctx.coordsLocal,&P); CHKERRQ(ierr);
 
   ierr = DMGlobalToLocal(ctx.daField[var::s],Gamma, INSERT_VALUES,ctx.POROSloc);  CHKERRQ(ierr);
   ierr = DMRestoreGlobalVector(ctx.daField[var::s], &Gamma); CHKERRQ(ierr);

@@ -20,6 +20,9 @@ PetscErrorCode cleanUpContext(AppContext & ctx){
   ierr = VecDestroy(&ctx.NORMALS); CHKERRQ(ierr);
   ierr = VecDestroy(&ctx.BOUNDARY); CHKERRQ(ierr);
   ierr = VecDestroy(&ctx.NODETYPE); CHKERRQ(ierr);
+  ierr = VecDestroy(&ctx.local_NodeType); CHKERRQ(ierr);
+  ierr = VecDestroy(&ctx.Sigma); CHKERRQ(ierr);
+  ierr = VecDestroy(&ctx.RHS); CHKERRQ(ierr);
 
   //DMDA for fields
   ierr = DMDestroy(&ctx.daField[0]); CHKERRQ(ierr);
