@@ -157,57 +157,9 @@ int main(int argc, char **argv) {
   ierr = setExact(ctx, ctx.U); CHKERRQ(ierr);
   ierr = WriteHDF5(ctx, "esatta", ctx.U); CHKERRQ(ierr);
 
-  {
-    PetscViewer viewer;
-    PetscViewerASCIIOpen(PETSC_COMM_WORLD,"esatta.m",&viewer);
-    PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_MATLAB);
-    VecView(ctx.U,viewer);
-    PetscViewerDestroy(&viewer);
-  }
-
-  ierr = VecScale(ctx.U,-1);
-  ierr = MatMultAdd(ctx.J,ctx.U,ctx.RHS,ctx.U0);//v3 = v2 + A * v1
+  ierr = VecScale(ctx.U,-1); CHKERRQ(ierr);
+  ierr = MatMultAdd(ctx.J,ctx.U,ctx.RHS,ctx.U0); CHKERRQ(ierr);//v3 = v2 + A * v1
   ierr = WriteHDF5(ctx, "residuo", ctx.U0); CHKERRQ(ierr);
-
-  {
-    PetscViewer viewer;
-    PetscViewerASCIIOpen(PETSC_COMM_WORLD,"res.m",&viewer);
-    PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_MATLAB);
-    VecView(ctx.U0,viewer);
-    PetscViewerDestroy(&viewer);
-  }
-
-  {
-    PetscViewer viewer;
-    PetscViewerASCIIOpen(PETSC_COMM_WORLD,"J.m",&viewer);
-    PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_MATLAB);
-    MatView(ctx.J,viewer);
-    PetscViewerDestroy(&viewer);
-  }
-  {
-    PetscViewer viewer;
-    PetscViewerASCIIOpen(PETSC_COMM_WORLD,"rhs.m",&viewer);
-    PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_MATLAB);
-    VecView(ctx.RHS,viewer);
-    PetscViewerDestroy(&viewer);
-  }
-
-  {
-    PetscScalar ***nodetype;
-    ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype); CHKERRQ(ierr);
-    FILE *file;
-    file = fopen("inattivi.csv", "w");
-    for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
-      for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
-        for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
-          if (nodetype[k][j][i]==N_INACTIVE)
-            fprintf(file,"%d\n",i+ctx.nnx*(j+ctx.nny*k));
-        }
-      }
-    }
-    fclose(file);
-    ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype); CHKERRQ(ierr);
-  }
 
   SNES snes;
   KSP kspJ;

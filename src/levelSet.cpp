@@ -728,11 +728,10 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   PetscScalar dy = ctx.dy;
   PetscScalar dz = ctx.dz;
 
-  //PetscPrintf(PETSC_COMM_SELF,"#%d] setGhostStencil %d\n",ctx.rank,kg);
   //int s=3;
   int i,j,k;
   nGlob2IJK(ctx,kg,i,j,k);
-  //PetscPrintf(PETSC_COMM_SELF,"%d (%d,%d,%d)\n",kg,i,j,k);
+  //PetscPrintf(PETSC_COMM_SELF,"#%d] setGhostStencil %d=(%d,%d,%d)\n",ctx.rank,kg,i,j,k);
 
   double xG=P[k][j][i].x; double yG=P[k][j][i].y;  double zG=P[k][j][i].z;
   int sx=SIGN(xC-xG);  int sy=SIGN(yC-yG);  int sz=SIGN(zC-zG);
@@ -745,14 +744,30 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   if(sz==0)
       //sz=SGN(Phi[k-nn1*nn2]-Phi[k+nn1*nn2]);
       sz=(k<nn3/2.)-(k>=nn3/2.);
+  //PetscPrintf(PETSC_COMM_SELF,"  sx,sy,sz (%d,%d,%d)\n",sx,sy,sz);
   int iii = ((i==1 && sx<0) || (i==nn1-2 && sx>0) || (upwind==0 && i!=1 && i!=nn1-2));
   int jjj = ((j==1 && sy<0) || (j==nn2-2 && sy>0) || (upwind==0 && j!=1 && j!=nn2-2));
   int kkk = ((k==1 && sz<0) || (k==nn3-2 && sz>0) || (upwind==0 && k!=1 && k!=nn3-2));
-  
+
+  if ( (iii!=0) || (jjj!=0) || (kkk!=0) ){
+    PetscPrintf(PETSC_COMM_SELF,"%d (%d,%d,%d)\n",kg,i,j,k);
+    PetscPrintf(PETSC_COMM_SELF,"  sx ,sy ,sz  (%d,%d,%d)\n",sx,sy,sz);
+    PetscPrintf(PETSC_COMM_SELF,"  iii,jjj,kkk (%d,%d,%d)\n",iii,jjj,kkk);
+  }
+
   for(int kk=0;kk<3;++kk)
     for(int jj=0;jj<3;++jj)
       for(int ii=0;ii<3;++ii)
         stencil[ii+3*jj+9*kk]=kg+sx*(ii-iii)+sy*(jj-jjj)*nn1+sz*(kk-kkk)*nn1*nn2;
+
+  //PetscPrintf(PETSC_COMM_SELF,"  Stencil inziale\n");
+  //for (int c=0; c<27; ++c){
+    //int ic,jc,kc;
+    //nGlob2IJK(ctx,stencil[c],ic,jc,kc);
+    //PetscPrintf(PETSC_COMM_SELF,"  (%d,%d,%d)%2.0f",ic,jc,kc,nodetype[kc][jc][ic]);
+    //if (c%9==8)
+      //PetscPrintf(PETSC_COMM_SELF,"\n");
+  //}
 
   int kg1=stencil[0];
   int i1,j1,k1;
@@ -762,7 +777,8 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   double thtx=fabs(xC-xG1)/2/dx;
   double thty=fabs(yC-yG1)/2/dy;
   double thtz=fabs(zC-zG1)/2/dz;
-  
+  //PetscPrintf(PETSC_COMM_SELF,"  B=(%f,%f,%f): theta=(%f,%f,%f)\n",xC,yC,zC,thtx,thty,thtz);
+
   double weights_x[]={(1-2*thtx)*(1-thtx), 4*thtx*(1-thtx), thtx*(2*thtx-1)};
   double weights_y[]={(1-2*thty)*(1-thty), 4*thty*(1-thty), thty*(2*thty-1)};
   double weights_z[]={(1-2*thtz)*(1-thtz), 4*thtz*(1-thtz), thtz*(2*thtz-1)};
@@ -795,7 +811,9 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   nxb=nxb/module;
   nyb=nyb/module;
   nzb=nzb/module;
-  
+
+  //PetscPrintf(PETSC_COMM_SELF,"  nB=(%f,%f,%f)\n",nxb,nyb,nzb);
+
   // check whether or not I have to shift the stencil
   int direction, s1,s2, nn1nn2, sxyz;
   double toll=1e-6*(dx+dy+dz)/3.;
@@ -845,7 +863,7 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
         break;
       else
       {
-        PetscPrintf(PETSC_COMM_SELF,"Shift faccia direzione %d a (%f,%f,%f)\n",direction,xC,yC,zC);
+        //PetscPrintf(PETSC_COMM_SELF,"Ghost %d Shift faccia direzione %d a (%f,%f,%f)\n",kg,direction,xC,yC,zC);
         nShifts++;
 
         stencil[ind]+=sxyz*3*nn1nn2;
@@ -873,6 +891,15 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   if (nShifts>0)
     critici.push_back({xC,yC,zC,nShifts});
 
+  //PetscPrintf(PETSC_COMM_SELF,"  Stencil 2\n");
+  //for (int c=0; c<27; ++c){
+    //int ic,jc,kc;
+    //nGlob2IJK(ctx,stencil[c],ic,jc,kc);
+    //PetscPrintf(PETSC_COMM_SELF,"  (%d,%d,%d)%2.0f",ic,jc,kc,nodetype[kc][jc][ic]);
+    //if (c%9==8)
+      //PetscPrintf(PETSC_COMM_SELF,"\n");
+  //}
+
   //controllo se sono rimasti altri punti non interni nè ghost
   std::bitset<27> mask;
   for(int cont=0;cont<27;++cont){
@@ -886,7 +913,7 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   if(!(mask.all()))
   {
     //riduco al primo ordine
-    PetscPrintf(PETSC_COMM_SELF,"#%d] riduco: %d\n",ctx.rank,kg);
+    PetscPrintf(PETSC_COMM_SELF,"#%d] riduco: %d (%d,%d,%d)\n",ctx.rank,kg,i,j,k);
     for(int kk=0;kk<3;++kk)
       for(int jj=0;jj<3;++jj)
         for(int ii=0;ii<3;++ii)
@@ -930,8 +957,18 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
     else if(phi[k_1][j_1][i_1]<0){ coeffs_dz[1]=-sz/dz; coeffs_dz[10]=sz/dz; }
     else if(phi[k_3][j_3][i_3]<0){coeffs_dz[3]=-sz/dz; coeffs_dz[12]=sz/dz;}
     else {SETERRQ(PETSC_COMM_SELF,1,"Error: No stencil available for the z-derivative.");}
+
+    //PetscPrintf(PETSC_COMM_SELF,"  Stencil 3\n");
+    //for (int c=0; c<27; ++c){
+      //int ic,jc,kc;
+      //nGlob2IJK(ctx,stencil[c],ic,jc,kc);
+      //PetscPrintf(PETSC_COMM_SELF,"  (%d,%d,%d)",ic,jc,kc);
+      //if (c%9==8)
+        //PetscPrintf(PETSC_COMM_SELF,"\n");
+    //}
   }
   //PetscPrintf(PETSC_COMM_SELF,"Done setGhostStencil %d\n",kg);
+
   return 0;
 }
 
