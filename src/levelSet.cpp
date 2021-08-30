@@ -826,9 +826,9 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
 
   //indici locali faccia da shiftare
   int Face[9];
-  for(int i=0; i<3; ++i)
-    for(int j=0; j<3; ++j)
-      Face[3*i+j]=s1*i+s2*j;
+  for(int j=0; j<3; ++j)
+    for(int i=0; i<3; ++i)
+      Face[i+3*j]=s1*i+s2*j;
 
   unsigned int nShifts=0;
   for(int i=0; i<9; ++i){
