@@ -956,7 +956,7 @@ PetscErrorCode setMatrix(AppContext &ctx)
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);
 
   ierr = DMCreateMatrix(ctx.daAll,&ctx.J);CHKERRQ(ierr);
-  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE); CHKERRQ(ierr);
+  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE); CHKERRQ(ierr);
 
   //ierr = DMDAGetCorners(CartesianGrid3D, &ys, &xs, &zs, &ym, &xm, &zm);
 
