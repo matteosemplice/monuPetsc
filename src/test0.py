@@ -1,18 +1,19 @@
 #!/bin/ipython
 
-from sympy import diff
+#from sympy import diff
+from sympy import * #serve per usare le varie funzioni...
 
 from sympy.abc import x, y, z
 
-#s = x*x + 2*y*y -3*z*z
-s=z
+s = x*x + 2*y*y +3*z*z - cos(2*pi*z)*exp(-x*y)
+#s=z
 c = 1
 
-gamma = 1
-sigma = 0
+gamma = exp(x-y+z)
+sigma = sin(x-y+2*z)
 
 grad = [diff(s,x),diff(s,y),diff(s,z)]
-gammaGrad = gamma*grad
+gammaGrad = [gamma*grad[0],gamma*grad[1],gamma*grad[2]]
 
 lapl = diff(gammaGrad[0],x)+diff(gammaGrad[1],y)+diff(gammaGrad[2],z)
 
