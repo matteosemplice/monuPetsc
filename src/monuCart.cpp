@@ -30,10 +30,11 @@ static char help[] = "Cartesian monument sulfation\n";
 #include "appctx.h"
 //#include "sulfation1d.h"
 //#include "sulfation2d.h"
-#include "sulfation3d.h"
+//#include "sulfation3d.h"
 #include "hdf5Output.h"
 #include "levelSet.h"
 #include "levelSetTest.h"
+#include "sulfation.h"
 
 int main(int argc, char **argv) {
 
@@ -121,21 +122,27 @@ int main(int argc, char **argv) {
   ierr = setBoundaryPoints(ctx); CHKERRQ(ierr);
   ierr = setGhost(ctx); CHKERRQ(ierr);
 
+  ierr = DMCreateMatrix(ctx.daAll,&ctx.J);CHKERRQ(ierr);
+  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE); CHKERRQ(ierr);
+
   //// Create solvers
-  //ierr = SNESCreate(PETSC_COMM_WORLD,&snes); CHKERRQ(ierr);
-  //ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
-  //ierr = SNESGetKSP(snes,&kspJ); CHKERRQ(ierr);
-  //ierr = KSPGetPC(kspJ,&pcJ); CHKERRQ(ierr);
+  SNES snes;
+  KSP kspJ;
+  PC pcJ;
+  ierr = SNESCreate(PETSC_COMM_WORLD,&snes); CHKERRQ(ierr);
+  ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
+  ierr = SNESGetKSP(snes,&kspJ); CHKERRQ(ierr);
+  ierr = KSPGetPC(kspJ,&pcJ); CHKERRQ(ierr);
   //ierr = PCSetType(pcJ,PCFIELDSPLIT); CHKERRQ(ierr);
   //ierr = PCFieldSplitSetIS(pcJ,"s",ctx.is[var::s]); CHKERRQ(ierr);
   //ierr = PCFieldSplitSetIS(pcJ,"c",ctx.is[var::c]); CHKERRQ(ierr);
   //ierr = PCFieldSplitSetType(pcJ,PC_COMPOSITE_MULTIPLICATIVE); CHKERRQ(ierr);
 
-  ////ierr = KSPSetType(kspJ,KSPPREONLY); CHKERRQ(ierr);
-  ////ierr = PCSetType(pcJ,PCLU); CHKERRQ(ierr);
+  ierr = KSPSetType(kspJ,KSPPREONLY); CHKERRQ(ierr);
+  ierr = PCSetType(pcJ,PCLU); CHKERRQ(ierr);
 
-  //ierr = KSPSetFromOptions(kspJ);
-  //ierr = PCSetFromOptions(pcJ);
+  ierr = KSPSetFromOptions(kspJ);
+  ierr = PCSetFromOptions(pcJ);
 
   ierr = DMCreateGlobalVector(ctx.daAll,&ctx.U); CHKERRQ(ierr);
   ierr = VecDuplicate(ctx.U,&ctx.U0); CHKERRQ(ierr);
@@ -148,32 +155,19 @@ int main(int argc, char **argv) {
   ierr = setSigma(ctx); CHKERRQ(ierr);
   ierr = setGamma(ctx); CHKERRQ(ierr);
 
-  //ierr = DMCreateMatrix(ctx.daAll,&ctx.J); CHKERRQ(ierr);
-  ierr = setMatrix(ctx); CHKERRQ(ierr);
-
   ierr = DMCreateGlobalVector(ctx.daAll, &ctx.RHS); CHKERRQ(ierr);
   ierr = setRHS(ctx); CHKERRQ(ierr);
 
-  ierr = setExact(ctx, ctx.U); CHKERRQ(ierr);
-  ierr = WriteHDF5(ctx, "esatta", ctx.U); CHKERRQ(ierr);
+  ierr = SNESSetFunction(snes,ctx.F      ,FormSulfationF,(void *) &ctx); CHKERRQ(ierr);
+  ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormSulfationJ,(void *) &ctx); CHKERRQ(ierr);
 
-  ierr = VecScale(ctx.U,-1); CHKERRQ(ierr);
-  ierr = MatMultAdd(ctx.J,ctx.U,ctx.RHS,ctx.U0); CHKERRQ(ierr);//v3 = v2 + A * v1
-  ierr = WriteHDF5(ctx, "residuo", ctx.U0); CHKERRQ(ierr);
+  ierr = VecSet(ctx.U,0.); //initial guess
+  ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
+  ierr = WriteHDF5(ctx, "soluzione", ctx.U); CHKERRQ(ierr);
 
-  SNES snes;
-  KSP kspJ;
-  PC pcJ;
-
-  ierr = KSPCreate(PETSC_COMM_WORLD,&kspJ); CHKERRQ(ierr);
-  ierr = KSPSetFromOptions(kspJ); CHKERRQ(ierr);
-
-  ierr = KSPSetOperators(kspJ,ctx.J,ctx.J); CHKERRQ(ierr);
-  PetscPrintf(PETSC_COMM_WORLD,"Solving...\n");
-  ierr = KSPSolve(kspJ, ctx.RHS, ctx.U0); CHKERRQ(ierr);
-  PetscPrintf(PETSC_COMM_WORLD,"Done solving.\n");
-
-  ierr = WriteHDF5(ctx, "soluzione", ctx.U0); CHKERRQ(ierr);
+  ierr = setExact(ctx, ctx.U0); CHKERRQ(ierr);
+  ierr = VecAXPY(ctx.U0,-1.0,ctx.U);
+  ierr = WriteHDF5(ctx, "errore", ctx.U0); CHKERRQ(ierr);
 
   ////Use Crank-Nicolson
   //ctx.dt   =ctx.dx;
@@ -238,8 +232,7 @@ int main(int argc, char **argv) {
 
   //ierr = WriteHDF5(ctx, "finale", ctx.U);
 
-  //ierr = SNESDestroy(&snes); CHKERRQ(ierr);
-  ierr = KSPDestroy(&kspJ); CHKERRQ(ierr);
+  ierr = SNESDestroy(&snes); CHKERRQ(ierr);
   ierr = cleanUpContext(ctx); CHKERRQ(ierr);
   ierr = PetscFinalize();
   return ierr;

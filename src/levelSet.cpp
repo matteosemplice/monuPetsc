@@ -972,7 +972,7 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   return 0;
 }
 
-PetscErrorCode setMatrix(AppContext &ctx)
+PetscErrorCode setMatrix(AppContext &ctx, Mat A)
 {
   PetscErrorCode ierr;
   PetscPrintf(PETSC_COMM_WORLD, "set matrix...\n");
@@ -992,9 +992,6 @@ PetscErrorCode setMatrix(AppContext &ctx)
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.Sigma   , &sigma);
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);
 
-  ierr = DMCreateMatrix(ctx.daAll,&ctx.J);CHKERRQ(ierr);
-  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE); CHKERRQ(ierr);
-
   //ierr = DMDAGetCorners(CartesianGrid3D, &ys, &xs, &zs, &ym, &xm, &zm);
 
   for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
@@ -1008,7 +1005,7 @@ PetscErrorCode setMatrix(AppContext &ctx)
             rows[c].i = i; rows[c].j = j; rows[c].k = k; rows[c].c=c;
             cols[c].i = i; cols[c].j = j; cols[c].k = k; cols[c].c=c;
           }
-          MatSetValuesStencil(ctx.J,2,rows,2,cols,vals,INSERT_VALUES);
+          MatSetValuesStencil(A,2,rows,2,cols,vals,INSERT_VALUES);
         }
         else if(nodetype[k][j][i]==N_INSIDE)
         {
@@ -1038,13 +1035,13 @@ PetscErrorCode setMatrix(AppContext &ctx)
           cols[ncols].i = i; cols[ncols].j = j; cols[ncols].k = k+1; cols[ncols].c=var::s;
           vals[ncols++] = -gammaZ2/dz2;
 
-          MatSetValuesStencil(ctx.J,1,&rows,ncols,cols,vals,INSERT_VALUES);
+          MatSetValuesStencil(A,1,&rows,ncols,cols,vals,INSERT_VALUES);
 
           //Per ora, identità su Jcc
           rows.c   =var::c;
           cols[0].c=var::c;
           vals[0]  =1.0;
-          MatSetValuesStencil(ctx.J,1,&rows,1,cols,vals,INSERT_VALUES);
+          MatSetValuesStencil(A,1,&rows,1,cols,vals,INSERT_VALUES);
         }
         else if (nodetype[k][j][i] >= 0)
         {
@@ -1064,12 +1061,12 @@ PetscErrorCode setMatrix(AppContext &ctx)
                 cols[ncols].i = i_ghost; cols[ncols].j = j_ghost; cols[ncols].k = k_ghost; cols[ncols].c=var::s;
                 vals[ncols++] = current.coeffsD[cont];
             }
-            MatSetValuesStencil(ctx.J,1,&rows,ncols,cols,vals,INSERT_VALUES);
+            MatSetValuesStencil(A,1,&rows,ncols,cols,vals,INSERT_VALUES);
             //Per ora, identità su Jcc
             rows.c   =var::c;
             cols[0].c=var::c;
             vals[0]  =1.0;
-            MatSetValuesStencil(ctx.J,1,&rows,1,cols,vals,INSERT_VALUES);
+            MatSetValuesStencil(A,1,&rows,1,cols,vals,INSERT_VALUES);
           }
           else{ // Ghost.Bdy
             SETERRQ(PETSC_COMM_SELF,1,"Not (yet) implemented");
@@ -1086,7 +1083,7 @@ PetscErrorCode setMatrix(AppContext &ctx)
               rows[c].i = i; rows[c].j = j; rows[c].k = k; rows[c].c=c;
               cols[c].i = i; cols[c].j = j; cols[c].k = k; cols[c].c=c;
             }
-            MatSetValuesStencil(ctx.J,2,rows,2,cols,vals,INSERT_VALUES);
+            MatSetValuesStencil(A,2,rows,2,cols,vals,INSERT_VALUES);
           }
         }
         else
@@ -1100,8 +1097,8 @@ PetscErrorCode setMatrix(AppContext &ctx)
   //ierr = PetscLogStageRegister("Assembly", &stage);CHKERRQ(ierr);
   //ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
 
-  ierr = MatAssemblyBegin(ctx.J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(ctx.J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.POROSloc, &gamma);

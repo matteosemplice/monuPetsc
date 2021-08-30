@@ -16,7 +16,7 @@ include ${PETSC_DIR}/lib/petsc/conf/rules
 EXE=monuCart
 MAIN=monuCart.cpp
 
-EXTRASRC=appctx.cpp hdf5Output.cpp levelSet.cpp levelSetTest.cpp test.cpp
+EXTRASRC=appctx.cpp hdf5Output.cpp levelSet.cpp levelSetTest.cpp test.cpp sulfation.cpp
 EXTRAOBJS=${EXTRASRC:%.cpp=%.o}
 EXTRAHDR=${EXTRASRC:%.cpp=%.h}
 
