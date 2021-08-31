@@ -117,9 +117,17 @@ int main(int argc, char **argv) {
 
   //load level-set function
   ierr = setPhi(ctx); CHKERRQ(ierr);
+  PetscLogStage stageBoundary, stageStencils;
+  ierr = PetscLogStageRegister("Boundary", &stageBoundary);CHKERRQ(ierr);
+  ierr = PetscLogStagePush(stageBoundary);CHKERRQ(ierr);
   ierr = setNormals(ctx); CHKERRQ(ierr);
   ierr = setBoundaryPoints(ctx); CHKERRQ(ierr);
+  ierr = PetscLogStagePop();CHKERRQ(ierr);
+
+  ierr = PetscLogStageRegister("Stencils", &stageStencils);CHKERRQ(ierr);
+  ierr = PetscLogStagePush(stageStencils);CHKERRQ(ierr);
   ierr = setGhost(ctx); CHKERRQ(ierr);
+  ierr = PetscLogStagePop();CHKERRQ(ierr);
 
   //// Create solvers
   //ierr = SNESCreate(PETSC_COMM_WORLD,&snes); CHKERRQ(ierr);
@@ -168,10 +176,14 @@ int main(int argc, char **argv) {
   ierr = KSPCreate(PETSC_COMM_WORLD,&kspJ); CHKERRQ(ierr);
   ierr = KSPSetFromOptions(kspJ); CHKERRQ(ierr);
 
+  PetscLogStage stageSolve;
+  ierr = PetscLogStageRegister("Solve", &stageSolve);CHKERRQ(ierr);
+  ierr = PetscLogStagePush(stageSolve);CHKERRQ(ierr);
   ierr = KSPSetOperators(kspJ,ctx.J,ctx.J); CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"Solving...\n");
   ierr = KSPSolve(kspJ, ctx.RHS, ctx.U0); CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"Done solving.\n");
+  ierr = PetscLogStagePop();CHKERRQ(ierr);
 
   ierr = WriteHDF5(ctx, "soluzione", ctx.U0); CHKERRQ(ierr);
 
