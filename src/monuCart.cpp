@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
   ierr = DMCreateGlobalVector(ctx.daAll,&ctx.U); CHKERRQ(ierr);
   ierr = VecDuplicate(ctx.U,&ctx.U0); CHKERRQ(ierr);
   ierr = VecDuplicate(ctx.U,&ctx.F ); CHKERRQ(ierr);
-  ierr = VecDuplicate(ctx.U,&ctx.F0); CHKERRQ(ierr);
+  ierr = VecDuplicate(ctx.U,&ctx.RHS); CHKERRQ(ierr);
   ierr = DMCreateLocalVector(ctx.daAll,&ctx.Uloc); CHKERRQ(ierr);
   ierr = DMCreateLocalVector(ctx.daField[var::c],&ctx.POROSloc); CHKERRQ(ierr);
 
@@ -165,86 +165,49 @@ int main(int argc, char **argv) {
   ierr = setSigma(ctx); CHKERRQ(ierr);
   ierr = setGamma(ctx); CHKERRQ(ierr);
 
-  ierr = DMCreateGlobalVector(ctx.daAll, &ctx.RHS); CHKERRQ(ierr);
-  ierr = setRHS(ctx); CHKERRQ(ierr);
-
   ierr = SNESSetFunction(snes,ctx.F      ,FormSulfationF,(void *) &ctx); CHKERRQ(ierr);
   ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormSulfationJ,(void *) &ctx); CHKERRQ(ierr);
 
-  ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
-  ierr = VecSet(ctx.U,0.); //initial guess
-  PetscPrintf(PETSC_COMM_WORLD,"Solving...\n");
-  ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
-  PetscPrintf(PETSC_COMM_WORLD,"Done solving.\n");
-  ierr = PetscLogStagePop();CHKERRQ(ierr);
-  ierr = WriteHDF5(ctx, "soluzione", ctx.U); CHKERRQ(ierr);
-
-  ierr = setExact(ctx, ctx.U0); CHKERRQ(ierr);
-  ierr = VecAXPY(ctx.U0,-1.0,ctx.U);
-  ierr = WriteHDF5(ctx, "errore", ctx.U0); CHKERRQ(ierr);
+  //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
+  //PetscPrintf(PETSC_COMM_WORLD,"Solving...\n");
+  //ierr = setInitialData(ctx, ctx.U0);
+  //ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
+  //PetscPrintf(PETSC_COMM_WORLD,"Done solving.\n");
+  //ierr = PetscLogStagePop();CHKERRQ(ierr);
+  //ierr = WriteHDF5(ctx, "soluzione", ctx.U); CHKERRQ(ierr);
+  //ierr = setExact(ctx, ctx.U0); CHKERRQ(ierr);
+  //ierr = VecAXPY(ctx.U0,-1.0,ctx.U);
+  //ierr = WriteHDF5(ctx, "errore", ctx.U0); CHKERRQ(ierr);
 
   ////Use Crank-Nicolson
-  //ctx.dt   =ctx.dx;
+  ctx.dt   =ctx.dx;
   //ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
   //Initial data
-  //ierr = setU03d(ctx.U0,ctx); CHKERRQ(ierr);
+  ierr = setInitialData(ctx, ctx.U0); CHKERRQ(ierr);
+  ierr = WriteHDF5(ctx, "monumento0", ctx.U0);
 
-  //PetscViewer viewerS,viewerC;
-  //PetscViewerDrawOpen(PETSC_COMM_WORLD,NULL,"SO2",PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,&viewerS);
-  //PetscViewerDrawOpen(PETSC_COMM_WORLD,NULL,"CaCO3",PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,&viewerC);
+  PetscScalar t = 0.;
+  const PetscScalar tFinal = 1.0;
+  //while (t<tFinal)
+  {
+    if (t+ctx.dt>=tFinal)
+      ctx.dt = (tFinal - t) + 1.e-15;
 
-  //switch (ctx.dim){
-  //case 1: ierr = SNESSetFunction(snes,ctx.F      ,FormFunction1d,(void *) &ctx); CHKERRQ(ierr);
-          //ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormJacobian1d,(void *) &ctx); CHKERRQ(ierr);
-          //break;
-  //case 2: ierr = SNESSetFunction(snes,ctx.F      ,FormFunction2d,(void *) &ctx); CHKERRQ(ierr);
-          //ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormJacobian2d,(void *) &ctx); CHKERRQ(ierr);
-          //break;
-  //case 3: ierr = SNESSetFunction(snes,ctx.F      ,FormFunction3d,(void *) &ctx); CHKERRQ(ierr);
-          //ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormJacobian3d,(void *) &ctx); CHKERRQ(ierr);
-          //break;
-  //}
+    ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS);CHKERRQ(ierr);
 
-  //PetscScalar t = 0.;
-  //const PetscScalar tFinal = 1.0;
-  //while (t<tFinal){
-    //if (t+ctx.dt>=tFinal)
-      //ctx.dt = (tFinal - t) + 1.e-15;
+    ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
+    ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
+    ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
+    ierr = PetscLogStagePop();CHKERRQ(ierr);
 
-    //switch (ctx.dim){
-    //case 1: ierr = FormRHS1d(ctx.F0,(void *) &ctx); CHKERRQ(ierr);
-            //break;
-    //case 2: ierr = FormRHS2d(ctx.F0,(void *) &ctx); CHKERRQ(ierr);
-            //break;
-    //case 3: ierr = FormRHS3d(ctx.F0,(void *) &ctx); CHKERRQ(ierr);
-            //break;
-    //default: SETERRQ(PETSC_COMM_WORLD,1,"Numero di dimensioni non gestito");
-    //}
-
-    //ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
-    //ierr = SNESSolve(snes,ctx.F0,ctx.U); CHKERRQ(ierr);
-
-    //if (ctx.dim==1) {
-      //Vec uS,uC;
-      //ierr = VecGetSubVector(ctx.U,ctx.is[var::s],&uS); CHKERRQ(ierr);
-      //ierr = VecView(uS,viewerS); CHKERRQ(ierr);
-      //ierr = VecRestoreSubVector(ctx.U,ctx.is[var::s],&uS); CHKERRQ(ierr);
-      //ierr = VecGetSubVector(ctx.U,ctx.is[var::c],&uC); CHKERRQ(ierr);
-      //ierr = VecView(uC,viewerC); CHKERRQ(ierr);
-      //ierr = VecRestoreSubVector(ctx.U,ctx.is[var::c],&uC); CHKERRQ(ierr);
-    //}
-
-    //t += ctx.dt;
-    //ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
-    //PetscPrintf(PETSC_COMM_WORLD,"t=%f, still %g to go\n",t,std::max(tFinal-t,0.));
-    //ctx.dt = ctx.dx;
-  //}
-
-  //PetscViewerDestroy(&viewerS);
-  //PetscViewerDestroy(&viewerC);
-
-  //ierr = WriteHDF5(ctx, "finale", ctx.U);
+    t += ctx.dt;
+    ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
+    PetscPrintf(PETSC_COMM_WORLD,"t=%f, still %g to go\n",t,std::max(tFinal-t,0.));
+    ctx.dt = ctx.dx;
+  }
+  //Per lo swap, il finale sta in U0 adesso!
+  ierr = WriteHDF5(ctx, "monumento1", ctx.U0);
 
   ierr = SNESDestroy(&snes); CHKERRQ(ierr);
   ierr = cleanUpContext(ctx); CHKERRQ(ierr);

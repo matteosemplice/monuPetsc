@@ -8,7 +8,6 @@ PetscErrorCode cleanUpContext(AppContext & ctx){
   ierr= VecDestroy(&ctx.U ); CHKERRQ(ierr);
   ierr= VecDestroy(&ctx.U0); CHKERRQ(ierr);
   ierr= VecDestroy(&ctx.F ); CHKERRQ(ierr);
-  ierr= VecDestroy(&ctx.F0); CHKERRQ(ierr);
   ierr= VecDestroy(&ctx.Uloc); CHKERRQ(ierr);
   ierr= VecDestroy(&ctx.POROSloc); CHKERRQ(ierr);
 

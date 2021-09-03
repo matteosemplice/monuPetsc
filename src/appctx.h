@@ -113,7 +113,7 @@ typedef struct {
   Mat J; //Jacobian
   //Mat Jb[4]; //Jacobian blocks
 
-  Vec U,U0,F,F0;
+  Vec U,U0,F;
   Vec Uloc,POROSloc;
   sulfationProblem pb;
   PetscScalar theta; //theta method

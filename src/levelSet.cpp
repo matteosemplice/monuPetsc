@@ -24,13 +24,6 @@ inline int powI(int base, int exp)
     return result;
 }
 
-inline void nGlob2IJK(AppContext ctx, int nGlob, int &i , int &j, int &k){
-  k     = nGlob / (ctx.nnx*ctx.nny);
-  nGlob = nGlob % (ctx.nnx*ctx.nny);
-  j     = nGlob / ctx.nnx;
-  i     = nGlob % ctx.nnx;
-}
-
 typedef struct{
   PetscScalar x,y,z;
   unsigned int n;
@@ -972,13 +965,19 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   return 0;
 }
 
-PetscErrorCode setMatrix(AppContext &ctx, Mat A)
+PetscErrorCode setMatValuesHelmoltz(AppContext &ctx, DM da, Vec Gamma, Vec Sigma, PetscScalar nu, Mat A)
 {
-  //Assume that POROSloc is correct!
-  PetscErrorCode ierr;
-  PetscPrintf(PETSC_COMM_WORLD, "set matrix...\n");
+  //Calls MatSetValues on A to insert values for the linear operator
+  // u -> sigma*u + alpha* Div( gamma Grad u) on inner nodes
+  // interpolation of u on xB for ghost nodes
+  //
+  // The matrix A should already exist and
+  // assembly routines should be called afterwards by the caller.
+  //
+  // gamma should be a local vector with ghost values set correctly:
+  // we do not call communication routines on gamma before using it.
 
-  ierr = PetscLogStagePush(ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
+  PetscErrorCode ierr;
 
   //PetscInt xs, ys, zs, xm, ym, zm;
   PetscScalar ***gamma, ***sigma, ***nodetype;
@@ -987,38 +986,35 @@ PetscErrorCode setMatrix(AppContext &ctx, Mat A)
   double dy2=ctx.dy*ctx.dy;
   double dz2=ctx.dz*ctx.dz;
 
-  ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.POROSloc, &gamma);
-  ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.Sigma   , &sigma);
-  ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);
+  ierr = DMDAVecGetArrayRead(da, Gamma, &gamma);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayRead(da, Sigma, &sigma);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayRead(da, ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
 
   for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
     for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
       for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
         if(nodetype[k][j][i]==N_INACTIVE)
         { //identity matrix
-          MatStencil rows[2], cols[2];
-          PetscScalar vals[4]={1.,0.,0.,1.};
-          for (int c=0; c<2; ++c){
-            rows[c].i = i; rows[c].j = j; rows[c].k = k; rows[c].c=c;
-            cols[c].i = i; cols[c].j = j; cols[c].k = k; cols[c].c=c;
-          }
-          MatSetValuesStencil(A,2,rows,2,cols,vals,INSERT_VALUES);
+          MatStencil row;
+          PetscScalar val=1.0;
+          row.i = i; row.j = j; row.k = k; row.c=var::s;
+          MatSetValuesStencil(A,1,&row,1,&row,&val,INSERT_VALUES);
         }
         else if(nodetype[k][j][i]==N_INSIDE)
         {
           double sigmaC = sigma[k][j][i];
-          double gammaX1 = (gamma[k][j][i] + gamma[k][j][i-1]) / 2;
-          double gammaX2 = (gamma[k][j][i] + gamma[k][j][i+1]) / 2;
-          double gammaY1 = (gamma[k][j][i] + gamma[k][j-1][i]) / 2;
-          double gammaY2 = (gamma[k][j][i] + gamma[k][j+1][i]) / 2;
-          double gammaZ1 = (gamma[k][j][i] + gamma[k-1][j][i]) / 2;
-          double gammaZ2 = (gamma[k][j][i] + gamma[k+1][j][i]) / 2;
+          double gammaX1 = nu * (gamma[k][j][i] + gamma[k][j][i-1]) / 2.;
+          double gammaX2 = nu * (gamma[k][j][i] + gamma[k][j][i+1]) / 2.;
+          double gammaY1 = nu * (gamma[k][j][i] + gamma[k][j-1][i]) / 2.;
+          double gammaY2 = nu * (gamma[k][j][i] + gamma[k][j+1][i]) / 2.;
+          double gammaZ1 = nu * (gamma[k][j][i] + gamma[k-1][j][i]) / 2.;
+          double gammaZ2 = nu * (gamma[k][j][i] + gamma[k+1][j][i]) / 2.;
           MatStencil rows = {0}, cols[7] = {{0}};
           PetscScalar vals[7];
           PetscInt ncols = 0;
           rows.i = i; rows.j = j; rows.k = k;  rows.c=var::s;
           cols[ncols].i = i; cols[ncols].j = j; cols[ncols].k = k; cols[ncols].c=var::s;
-          vals[ncols++] = sigmaC+(gammaX1+gammaX2)/dx2+(gammaY1+gammaY2)/dy2+(gammaZ1+gammaZ2)/dz2;
+          vals[ncols++] = sigmaC+ (gammaX1+gammaX2)/dx2+(gammaY1+gammaY2)/dy2+(gammaZ1+gammaZ2)/dz2;
           cols[ncols].i = i-1; cols[ncols].j = j; cols[ncols].k = k; cols[ncols].c=var::s;
           vals[ncols++] = -gammaX1/dx2;
           cols[ncols].i = i+1; cols[ncols].j = j; cols[ncols].k = k; cols[ncols].c=var::s;
@@ -1033,12 +1029,6 @@ PetscErrorCode setMatrix(AppContext &ctx, Mat A)
           vals[ncols++] = -gammaZ2/dz2;
 
           MatSetValuesStencil(A,1,&rows,ncols,cols,vals,INSERT_VALUES);
-
-          //Per ora, identità su Jcc
-          rows.c   =var::c;
-          cols[0].c=var::c;
-          vals[0]  =1.0;
-          MatSetValuesStencil(A,1,&rows,1,cols,vals,INSERT_VALUES);
         }
         else if (nodetype[k][j][i] >= 0)
         {
@@ -1056,11 +1046,6 @@ PetscErrorCode setMatrix(AppContext &ctx, Mat A)
                 vals[ncols++] = current.coeffsD[cont];
             }
             MatSetValuesStencil(A,1,&rows,ncols,cols,vals,INSERT_VALUES);
-            //Per ora, identità su Jcc
-            rows.c   =var::c;
-            cols[0].c=var::c;
-            vals[0]  =1.0;
-            MatSetValuesStencil(A,1,&rows,1,cols,vals,INSERT_VALUES);
           }
           else{ // Ghost.Bdy
             SETERRQ(PETSC_COMM_SELF,1,"Not (yet) implemented");
@@ -1071,13 +1056,10 @@ PetscErrorCode setMatrix(AppContext &ctx, Mat A)
             //vals[0] = 1.;
             //MatSetValuesStencil(M,1,&rows,1,cols,vals,INSERT_VALUES);
             //identity matrix
-            MatStencil rows[2], cols[2];
-            PetscScalar vals[4]={1.,0.,0.,1.};
-            for (int c=0; c<2; ++c){
-              rows[c].i = i; rows[c].j = j; rows[c].k = k; rows[c].c=c;
-              cols[c].i = i; cols[c].j = j; cols[c].k = k; cols[c].c=c;
-            }
-            MatSetValuesStencil(A,2,rows,2,cols,vals,INSERT_VALUES);
+            MatStencil row;
+            PetscScalar val=1.0;
+            row.i = i; row.j = j; row.k = k; row.c=var::s;
+            MatSetValuesStencil(A,1,&row,1,&row,&val,INSERT_VALUES);
           }
         }
         else
@@ -1086,13 +1068,9 @@ PetscErrorCode setMatrix(AppContext &ctx, Mat A)
     }
   }
 
-  ierr = MatAssemblyBegin(ctx.J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(ctx.J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = PetscLogStagePop();CHKERRQ(ierr);
-
-  ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.POROSloc, &gamma);
-  ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.Sigma   , &sigma);
-  ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);
+  ierr = DMDAVecRestoreArrayRead(da, ctx.POROSloc, &gamma);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayRead(da, ctx.Sigma   , &sigma);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayRead(da, ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
 
   return ierr;
 }
@@ -1113,12 +1091,20 @@ PetscScalar checkInterp(AppContext &ctx,DMDACoor3d ***P,PetscScalar xC,PetscScal
 
 PetscScalar Phi1_(DMDACoor3d p)
 {
-  const PetscScalar x0=sqrt(2.)/30.;
-  const PetscScalar y0=sqrt(3.)/40.;
-  const PetscScalar z0=-sqrt(2.)/50.;
-  //PetscScalar radius=0.786;
-  const PetscScalar aa=0.786;
-  const PetscScalar bb=0.386;
-  const PetscScalar cc=0.586;
-  return pow((p.x-x0)/aa,2)+pow((p.y-y0)/bb,2)+pow((p.z-z0)/cc,2)-1;
+  //const PetscScalar x0=sqrt(2.)/30.;
+  //const PetscScalar y0=sqrt(3.)/40.;
+  //const PetscScalar z0=-sqrt(2.)/50.;
+  ////PetscScalar radius=0.786;
+  //const PetscScalar aa=0.786;
+  //const PetscScalar bb=0.386;
+  //const PetscScalar cc=0.586;
+  //return pow((p.x-x0)/aa,2)+pow((p.y-y0)/bb,2)+pow((p.z-z0)/cc,2)-1;
+  const PetscScalar x0=0.;
+  const PetscScalar y0=0.;
+  const PetscScalar z0=0.;
+  const PetscScalar aa=1.;
+  const PetscScalar bb=1.;
+  const PetscScalar cc=1.;
+  return pow((p.x-x0)/aa,2)+pow((p.y-y0)/bb,2)+pow((p.z-z0)/cc,2)-0.7*0.7;
+
 }
