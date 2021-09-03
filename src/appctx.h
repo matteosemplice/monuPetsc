@@ -11,6 +11,8 @@ enum block {ss=0,sc=1,cs=2,cc=3};
 enum var {s=0,c=1};
 typedef struct{ PetscScalar s,c;} data_type;
 
+enum stageNames {BOUNDARY,STENCILS,ASSEMBLY,SOLVING};
+
 typedef struct ghost {
     int index;//indice del punto ghost
     //double xc; //non sembra usato...
@@ -117,6 +119,7 @@ typedef struct {
   PetscScalar theta; //theta method
   PetscScalar dt; //time step
 
+  PetscLogStage logStages[4];
 } AppContext;
 
 PetscErrorCode cleanUpContext(AppContext & ctx);

@@ -92,6 +92,11 @@ int main(int argc, char **argv) {
     ctx.mgLevels=0;
   }
 
+  ierr = PetscLogStageRegister("Boundary", &ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
+  ierr = PetscLogStageRegister("Stencils", &ctx.logStages[STENCILS]);CHKERRQ(ierr);
+  ierr = PetscLogStageRegister("Assembly", &ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
+  ierr = PetscLogStageRegister("Solve",    &ctx.logStages[SOLVING]);CHKERRQ(ierr);
+
   //Create DMDA
   ierr = DMDACreate3d(PETSC_COMM_WORLD,
                       DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,
@@ -118,9 +123,14 @@ int main(int argc, char **argv) {
 
   //load level-set function
   ierr = setPhi(ctx); CHKERRQ(ierr);
+  ierr = PetscLogStagePush(ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
   ierr = setNormals(ctx); CHKERRQ(ierr);
   ierr = setBoundaryPoints(ctx); CHKERRQ(ierr);
+  ierr = PetscLogStagePop();CHKERRQ(ierr);
+
+  ierr = PetscLogStagePush(ctx.logStages[STENCILS]);CHKERRQ(ierr);
   ierr = setGhost(ctx); CHKERRQ(ierr);
+  ierr = PetscLogStagePop();CHKERRQ(ierr);
 
   ierr = DMCreateMatrix(ctx.daAll,&ctx.J);CHKERRQ(ierr);
   ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE); CHKERRQ(ierr);
@@ -133,13 +143,13 @@ int main(int argc, char **argv) {
   ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
   ierr = SNESGetKSP(snes,&kspJ); CHKERRQ(ierr);
   ierr = KSPGetPC(kspJ,&pcJ); CHKERRQ(ierr);
-  //ierr = PCSetType(pcJ,PCFIELDSPLIT); CHKERRQ(ierr);
-  //ierr = PCFieldSplitSetIS(pcJ,"s",ctx.is[var::s]); CHKERRQ(ierr);
-  //ierr = PCFieldSplitSetIS(pcJ,"c",ctx.is[var::c]); CHKERRQ(ierr);
-  //ierr = PCFieldSplitSetType(pcJ,PC_COMPOSITE_MULTIPLICATIVE); CHKERRQ(ierr);
+  ierr = PCSetType(pcJ,PCFIELDSPLIT); CHKERRQ(ierr);
+  ierr = PCFieldSplitSetIS(pcJ,"s",ctx.is[var::s]); CHKERRQ(ierr);
+  ierr = PCFieldSplitSetIS(pcJ,"c",ctx.is[var::c]); CHKERRQ(ierr);
+  ierr = PCFieldSplitSetType(pcJ,PC_COMPOSITE_MULTIPLICATIVE); CHKERRQ(ierr);
 
-  ierr = KSPSetType(kspJ,KSPPREONLY); CHKERRQ(ierr);
-  ierr = PCSetType(pcJ,PCLU); CHKERRQ(ierr);
+  //ierr = KSPSetType(kspJ,KSPPREONLY); CHKERRQ(ierr);
+  //ierr = PCSetType(pcJ,PCLU); CHKERRQ(ierr);
 
   ierr = KSPSetFromOptions(kspJ);
   ierr = PCSetFromOptions(pcJ);
@@ -161,8 +171,12 @@ int main(int argc, char **argv) {
   ierr = SNESSetFunction(snes,ctx.F      ,FormSulfationF,(void *) &ctx); CHKERRQ(ierr);
   ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormSulfationJ,(void *) &ctx); CHKERRQ(ierr);
 
+  ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
   ierr = VecSet(ctx.U,0.); //initial guess
+  PetscPrintf(PETSC_COMM_WORLD,"Solving...\n");
   ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"Done solving.\n");
+  ierr = PetscLogStagePop();CHKERRQ(ierr);
   ierr = WriteHDF5(ctx, "soluzione", ctx.U); CHKERRQ(ierr);
 
   ierr = setExact(ctx, ctx.U0); CHKERRQ(ierr);

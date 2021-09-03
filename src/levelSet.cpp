@@ -974,8 +974,11 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
 
 PetscErrorCode setMatrix(AppContext &ctx, Mat A)
 {
+  //Assume that POROSloc is correct!
   PetscErrorCode ierr;
   PetscPrintf(PETSC_COMM_WORLD, "set matrix...\n");
+
+  ierr = PetscLogStagePush(ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
 
   //PetscInt xs, ys, zs, xm, ym, zm;
   PetscScalar ***gamma, ***sigma, ***nodetype;
@@ -983,16 +986,10 @@ PetscErrorCode setMatrix(AppContext &ctx, Mat A)
   double dx2=ctx.dx*ctx.dx;
   double dy2=ctx.dy*ctx.dy;
   double dz2=ctx.dz*ctx.dz;
-  //int nn123_2=2*nn123;
-
-  //ierr = DMGlobalToLocalBegin(ctx.daField[var::s], ctx.POROS, INSERT_VALUES, ctx.POROSloc);
-  //ierr = DMGlobalToLocalEnd  (ctx.daField[var::s], ctx.POROS, INSERT_VALUES, ctx.POROSloc);
 
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.POROSloc, &gamma);
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.Sigma   , &sigma);
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);
-
-  //ierr = DMDAGetCorners(CartesianGrid3D, &ys, &xs, &zs, &ym, &xm, &zm);
 
   for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
     for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
@@ -1053,9 +1050,6 @@ PetscErrorCode setMatrix(AppContext &ctx, Mat A)
             rows.i = i; rows.j = j; rows.k = k; rows.c=var::s;
             for(int cont=0;cont<27;++cont){
                 int kg_ghost=current.stencil[cont];
-                //int k_ghost = kg_ghost/(nn1*nn2);
-                //int j_ghost = (kg_ghost-k_ghost*nn1*nn2)/nn1;
-                //int i_ghost = kg_ghost-nn1*j_ghost-nn1*nn2*k_ghost;
                 int i_ghost, j_ghost, k_ghost;
                 nGlob2IJK(ctx, kg_ghost, i_ghost, j_ghost, k_ghost);
                 cols[ncols].i = i_ghost; cols[ncols].j = j_ghost; cols[ncols].k = k_ghost; cols[ncols].c=var::s;
@@ -1092,14 +1086,9 @@ PetscErrorCode setMatrix(AppContext &ctx, Mat A)
     }
   }
 
-  /*********************************************/
-  
-  //ierr = PetscLogStageRegister("Assembly", &stage);CHKERRQ(ierr);
-  //ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
-
-  ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  //ierr = PetscLogStagePop();CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(ctx.J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(ctx.J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = PetscLogStagePop();CHKERRQ(ierr);
 
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.POROSloc, &gamma);
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.Sigma   , &sigma);
