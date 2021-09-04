@@ -15,13 +15,20 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
   AppContext * ctx_p = (AppContext *) _ctx;
   AppContext &ctx = *ctx_p;
 
-  contaF++;
-  if (contaF%100==0)
-    PetscPrintf(PETSC_COMM_WORLD,"Computing F: %d\n",contaF);
+  PetscPrintf(PETSC_COMM_WORLD,"Computing F\n");
+  //contaF++;
+  //if (contaF%100==0)
+    //PetscPrintf(PETSC_COMM_WORLD,"Computing F: %d\n",contaF);
 
-  ierr = computePorosity(ctx, U, ctx.POROSloc);CHKERRQ(ierr);
+  //Vec UinLoc;
+  //ierr = DMGetLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(ctx.daAll,U,INSERT_VALUES,ctx.Uloc);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (ctx.daAll,U,INSERT_VALUES,ctx.Uloc);CHKERRQ(ierr);
 
-  ierr = odeFun(ctx, ctx.POROSloc, U, F);
+  ierr = computePorosity(ctx, ctx.Uloc, ctx.POROSloc);CHKERRQ(ierr);
+  ierr = odeFun(ctx, ctx.POROSloc, ctx.Uloc, F);
+  //ierr = DMRestoreLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
+
   PetscScalar ****u, ****f;
   PetscScalar ***nodetype, ***poros;
 
@@ -57,9 +64,15 @@ PetscErrorCode FormSulfationRHS(AppContext &ctx,Vec U0,Vec F0){
 
   PetscPrintf(PETSC_COMM_WORLD,"Computing RHS\n");
 
-  ierr = computePorosity(ctx, U0, ctx.POROSloc);CHKERRQ(ierr);
+  //Vec U0loc;
+  //ierr = DMGetLocalVector(ctx.daAll,&U0loc); CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(ctx.daAll,U0,INSERT_VALUES,ctx.Uloc);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (ctx.daAll,U0,INSERT_VALUES,ctx.Uloc);CHKERRQ(ierr);
+  ierr = computePorosity(ctx, ctx.Uloc, ctx.POROSloc);CHKERRQ(ierr);
 
-  ierr = odeFun(ctx, ctx.POROSloc, U0, F0);CHKERRQ(ierr);
+  ierr = odeFun(ctx, ctx.POROSloc, ctx.Uloc, F0);CHKERRQ(ierr);
+  //ierr = DMRestoreLocalVector(ctx.daAll,&U0loc); CHKERRQ(ierr);
+
   PetscScalar ****u0, ****f0;
   PetscScalar ***nodetype, ***poros;
 
@@ -100,7 +113,12 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   PetscPrintf(PETSC_COMM_WORLD,"Computing J\n");
   ierr = PetscLogStagePush(ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
 
-  ierr = computePorosity(ctx, U, ctx.POROSloc);CHKERRQ(ierr);
+  //Vec UinLoc;
+  //ierr = DMGetLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(ctx.daAll,U,INSERT_VALUES,ctx.Uloc);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (ctx.daAll,U,INSERT_VALUES,ctx.Uloc);CHKERRQ(ierr);
+
+  ierr = computePorosity(ctx, ctx.Uloc, ctx.POROSloc);CHKERRQ(ierr);
 
   {
     const PetscScalar As = ctx.pb.a / ctx.pb.mc;
@@ -120,10 +138,11 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   }
 
   ierr = setMatValuesHelmoltz(ctx, ctx.daField[var::s], ctx.POROSloc, ctx.Sigma, ctx.pb.d*ctx.dt*(ctx.theta-1.0), P);CHKERRQ(ierr);
-  ierr = setMatValuesSC(ctx, U, ctx.daField[var::s], ctx.POROSloc, P);CHKERRQ(ierr);
+  ierr = setMatValuesSC(ctx, ctx.Uloc, ctx.daField[var::s], ctx.POROSloc, P);CHKERRQ(ierr);
   ierr = setMatValuesCSCC(ctx, U, ctx.daField[var::c], ctx.POROSloc, P);CHKERRQ(ierr);
 
   ierr = MatAssemblyBegin(P,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+    //ierr = DMRestoreLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
   ierr = MatAssemblyEnd(P,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = PetscLogStagePop();CHKERRQ(ierr);
 
@@ -185,19 +204,15 @@ PetscErrorCode setMatValuesCSCC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat
   return ierr;
 }
 
-PetscErrorCode setMatValuesSC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat A)
+PetscErrorCode setMatValuesSC(AppContext &ctx, Vec UinLoc, DM da, Vec POROSloc, Mat A)
 {
   PetscErrorCode ierr;
 
   PetscScalar ***poros, ***nodetype;
   PetscScalar ****u;
 
-  Vec UinLoc;
-  ierr = DMGetLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
-  ierr = DMGlobalToLocalBegin(ctx.daAll,U,INSERT_VALUES,UinLoc);CHKERRQ(ierr);
-    ierr = DMDAVecGetArrayRead(da, POROSloc, &poros);CHKERRQ(ierr);
-    ierr = DMDAVecGetArrayRead(da, ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
-  ierr = DMGlobalToLocalEnd  (ctx.daAll,U,INSERT_VALUES,UinLoc);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayRead(da, POROSloc, &poros);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayRead(da, ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayDOFRead(ctx.daAll, UinLoc, &u);CHKERRQ(ierr);
 
   const PetscScalar dx2=ctx.dx*ctx.dx;
@@ -252,23 +267,21 @@ PetscErrorCode setMatValuesSC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat A
   ierr = DMDAVecRestoreArrayRead(da, ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, UinLoc, &u);CHKERRQ(ierr);
 
-  ierr = DMRestoreLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
-
   return ierr;
 }
 
-PetscErrorCode computePorosity(AppContext &ctx, Vec U,Vec POROSloc){
+PetscErrorCode computePorosity(AppContext &ctx, Vec Uloc,Vec POROSloc){
   PetscErrorCode ierr;
   PetscScalar ***poros;
   PetscScalar ****u;
 
   ierr = DMDAVecGetArray(ctx.daField[var::c], POROSloc, &poros);CHKERRQ(ierr);
   //ierr = DMDAVecGetArrayRead(da, ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
-  ierr = DMDAVecGetArrayDOF(ctx.daAll, U, &u);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayDOF(ctx.daAll, Uloc, &u);CHKERRQ(ierr);
 
-  for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++)
-    for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++)
-      for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
+  for (PetscInt k=ctx.daInfo.gzs; k<ctx.daInfo.gzs+ctx.daInfo.gzm; k++)
+    for (PetscInt j=ctx.daInfo.gys; j<ctx.daInfo.gys+ctx.daInfo.gym; j++)
+      for (PetscInt i=ctx.daInfo.gxs; i<ctx.daInfo.gxs+ctx.daInfo.gxm; i++){
         //PetscScalar c=u[k][j][i][var::c];
         //PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d): c=%f\n",i,j,k,c);
         //PetscScalar p=ctx.pb.phi(c);
@@ -278,7 +291,7 @@ PetscErrorCode computePorosity(AppContext &ctx, Vec U,Vec POROSloc){
 
   ierr = DMDAVecRestoreArray(ctx.daField[var::c], POROSloc, &poros);CHKERRQ(ierr);
   //ierr = DMDAVecRestoreArrayRead(da, ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
-  ierr = DMDAVecRestoreArrayDOF(ctx.daAll, U, &u);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayDOF(ctx.daAll, Uloc, &u);CHKERRQ(ierr);
 
   ierr =  DMLocalToLocalBegin(ctx.daField[var::c],POROSloc,INSERT_VALUES,POROSloc);
   ierr =  DMLocalToLocalEnd  (ctx.daField[var::c],POROSloc,INSERT_VALUES,POROSloc);
@@ -307,16 +320,12 @@ PetscErrorCode setInitialData(AppContext &ctx, Vec U0){
   return ierr;
 }
 
-PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec Uin, Vec Uout)
+PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec UinLoc, Vec Uout)
 {
   // Uout = (rho*s;c) +alpha*f(s,c)
   // dove f(s,c) è il RHS della ODE solfatazione
 
   PetscErrorCode ierr;
-  Vec UinLoc;
-  ierr = DMGetLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
-  ierr = DMGlobalToLocalBegin(ctx.daAll,Uin,INSERT_VALUES,UinLoc);CHKERRQ(ierr);
-  ierr = DMGlobalToLocalEnd  (ctx.daAll,Uin,INSERT_VALUES,UinLoc);CHKERRQ(ierr);
 
   PetscScalar ****uIn, ****uOut;
   PetscScalar ***nodetype, ***poros;
@@ -327,7 +336,7 @@ PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec Uin, Vec Uout)
 
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayRead(ctx.daField[var::c], POROSloc, &poros);CHKERRQ(ierr);
-  ierr = DMDAVecGetArrayDOFRead(ctx.daAll, Uin, &uIn);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayDOFRead(ctx.daAll, UinLoc, &uIn);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayDOFRead(ctx.daAll, Uout, &uOut);CHKERRQ(ierr);
 
   const PetscScalar Ac = ctx.pb.a / ctx.pb.ms;
@@ -382,10 +391,8 @@ PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec Uin, Vec Uout)
   }
 
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
-  ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, Uin, &uIn);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, UinLoc, &uIn);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, Uout, &uOut);CHKERRQ(ierr);
-
-  ierr = DMRestoreLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
 
   return ierr;
 }
