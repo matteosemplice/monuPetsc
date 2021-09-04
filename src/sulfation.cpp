@@ -37,7 +37,7 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
         if(nodetype[k][j][i]==N_INSIDE)
           f[k][j][i][var::s] = poros[k][j][i] * u[k][j][i][var::s]
                                + ctx.dt * (ctx.theta-1.0) * f[k][j][i][var::s];
-        if(nodetype[k][j][i]>=0) //ghost points
+        if(nodetype[k][j][i]>=N_INSIDE) //inner and ghost points
           f[k][j][i][var::c] = u[k][j][i][var::c]
                                + ctx.dt * (ctx.theta-1.0) * f[k][j][i][var::c];
       }
@@ -112,7 +112,7 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
     for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++)
       for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++)
         for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++)
-          sigma[k][j][i] = poros[k][j][i] +
+          sigma[k][j][i] = poros[k][j][i] -
                           ctx.dt * (ctx.theta-1.0) * As * u[k][j][i][var::c] * poros[k][j][i];
     ierr = DMDAVecRestoreArrayRead(ctx.daField[var::c], ctx.POROSloc, &poros);CHKERRQ(ierr);
     ierr = DMDAVecRestoreArrayRead(ctx.daField[var::c], ctx.Sigma   , &sigma);CHKERRQ(ierr);
@@ -167,9 +167,9 @@ PetscErrorCode setMatValuesCSCC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat
         else if(nodetype[k][j][i]>=N_INSIDE ) //inner and ghosts
         {
           //diagonal in Jcc
-          vals[0] = 1.0 + ctx.dt*(ctx.theta-1.0)*Ac * u[k][j][i][var::s] * (poros[k][j][i] + u[k][j][i][var::c] * ctx.pb.phiDer(u[k][j][i][var::c]));
+          vals[0] = 1.0 - ctx.dt*(ctx.theta-1.0)*Ac * u[k][j][i][var::s] * (poros[k][j][i] + u[k][j][i][var::c] * ctx.pb.phiDer(u[k][j][i][var::c]));
           //diagonal in Jsc
-          vals[1] = ctx.dt*(ctx.theta-1.0)*Ac * u[k][j][i][var::c] * poros[k][j][i];
+          vals[1] =     - ctx.dt*(ctx.theta-1.0)*Ac * u[k][j][i][var::c] * poros[k][j][i];
           MatSetValuesStencil(A,1,&row,2,cols,vals,INSERT_VALUES);
         }
         else
@@ -234,13 +234,13 @@ PetscErrorCode setMatValuesSC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat A
           PetscScalar vals[7]={
             extraDiag + 
             factor * ctx.pb.phiDer(u[k][j][i][var::c]) 
-                   * ( (dsX1-dsX0)/dx2 + (dsY1-dsY0)/dy2 + (dsZ1-dsZ0)/dz2 ),
+                   * ( (dsX1+dsX0)/dx2 + (dsY1+dsY0)/dy2 + (dsZ1+dsZ0)/dz2 ),
             factor * ctx.pb.phiDer(u[k][j][i-1][var::c]) * dsX0/dx2,
             factor * ctx.pb.phiDer(u[k][j][i+1][var::c]) * dsX1/dx2,
             factor * ctx.pb.phiDer(u[k][j-1][i][var::c]) * dsY0/dy2,
             factor * ctx.pb.phiDer(u[k][j+1][i][var::c]) * dsY1/dy2,
-            factor * ctx.pb.phiDer(u[k-1][j][i][var::c]) * dsY0/dz2,
-            factor * ctx.pb.phiDer(u[k+1][j][i][var::c]) * dsY1/dz2
+            factor * ctx.pb.phiDer(u[k-1][j][i][var::c]) * dsZ0/dz2,
+            factor * ctx.pb.phiDer(u[k+1][j][i][var::c]) * dsZ1/dz2
             };
           MatSetValuesStencil(A,1,&row,7,cols,vals,INSERT_VALUES);
         }
@@ -307,27 +307,6 @@ PetscErrorCode setInitialData(AppContext &ctx, Vec U0){
   return ierr;
 }
 
-PetscErrorCode setF0(AppContext &ctx, Vec F0){
-  PetscErrorCode ierr;
-  //PetscScalar ****u;
-  //PetscScalar *** nodetype;
-
-  //ierr = DMDAVecGetArrayDOF(ctx.daAll, U0, &u);CHKERRQ(ierr);
-  //ierr = DMDAVecGetArrayRead(ctx.daAll, ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
-
-  //for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++)
-    //for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++)
-      //for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
-        //u[k][j][i][var::s] = (nodetype[k][j][i] <= N_INSIDE ? ctx.pb.s0 : ctx.pb.sExt);
-        //u[k][j][i][var::c] = ctx.pb.c0;
-      //}
-
-  //ierr = DMDAVecRestoreArrayDOF(ctx.daAll, U0, &u);CHKERRQ(ierr);
-  //ierr = DMDAVecRestoreArrayRead(ctx.daAll, ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
-
-  return ierr;
-}
-
 PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec Uin, Vec Uout)
 {
   // Uout = (rho*s;c) +alpha*f(s,c)
@@ -370,26 +349,30 @@ PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec Uin, Vec Uout)
           const PetscScalar porosZ2 = (poros[k][j][i] + poros[k+1][j][i]) / 2.;
 
           uOut[k][j][i][var::s] = - As * cRhoS
-                                  + ((porosX1+porosX2)/dx2+(porosY1+porosY2)/dy2+(porosZ1+porosZ2)/dz2) * uIn[k][j][i][var::s]
+                                  + ctx.pb.d*(
+                                  ((porosX1+porosX2)/dx2+(porosY1+porosY2)/dy2+(porosZ1+porosZ2)/dz2) * uIn[k][j][i][var::s]
                                   -porosX1/dx2 * uIn[k][j][i-1][var::s]
                                   -porosX2/dx2 * uIn[k][j][i+1][var::s]
                                   -porosY1/dy2 * uIn[k][j-1][i][var::s]
-                                  -porosY2/dy2 * uIn[k][j-1][i][var::s]
+                                  -porosY2/dy2 * uIn[k][j+1][i][var::s]
                                   -porosZ1/dz2 * uIn[k-1][j][i][var::s]
-                                  -porosZ2/dz2 * uIn[k+1][j][i][var::s];
+                                  -porosZ2/dz2 * uIn[k+1][j][i][var::s]
+                                  );
           uOut[k][j][i][var::c] = - Ac * cRhoS;
         } else { //ghost points
           assert(nodetype[k][j][i]>=0);
           uOut[k][j][i][var::s] = 0.;
           if (nodetype[k][j][i] < ctx.nn123){ // Ghost.Phi1
+            uOut[k][j][i][var::c] = - Ac * cRhoS;
             ghost & current = ctx.Ghost.Phi1[nodetype[k][j][i]];
             for(int cont=0;cont<27;++cont){
                 int kg_ghost=current.stencil[cont];
                 int i_ghost, j_ghost, k_ghost;
                 nGlob2IJK(ctx, kg_ghost, i_ghost, j_ghost, k_ghost);
                 uOut[k][j][i][var::s] += current.coeffsD[cont] * uIn[k_ghost][j_ghost][i_ghost][var::s];
+                //PetscPrintf(PETSC_COMM_WORLD," ghost %d -> %d with coeff %f\n", 2*(i+ctx.nnx*(j+ctx.nny*k)), 2*(kg_ghost), current.coeffsD[cont]);
             }
-            uOut[k][j][i][var::s] = - Ac * cRhoS;
+            //abort();
           } else { // Ghost.Bdy
             SETERRQ(PETSC_COMM_SELF,1,"Not (yet) implemented");
           }
