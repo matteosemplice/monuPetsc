@@ -242,7 +242,7 @@ PetscErrorCode setMatValuesSC(AppContext &ctx, Vec UinLoc, DM da, Vec POROSloc, 
           const PetscScalar dsZ1 = 0.5* ( u[k][j][i][var::s] - u[k+1][j][i][var::s]); //N.B. -diff
 
           const PetscScalar extraDiag = ctx.pb.phiDer(u[k][j][i][var::c]) * u[k][j][i][var::s]
-                                        +ctx.dt*(ctx.theta-1.0)*As*u[k][j][i][var::s]
+                                        -ctx.dt*(ctx.theta-1.0)*As*u[k][j][i][var::s]
                                                *(poros[k][j][i] + ctx.pb.phiDer(u[k][j][i][var::c])*u[k][j][i][var::c]);
           const PetscScalar factor = ctx.pb.d * ctx.dt*(ctx.theta-1.0);
           
