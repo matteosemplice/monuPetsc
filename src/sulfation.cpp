@@ -145,6 +145,7 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
     //ierr = DMRestoreLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
   ierr = MatAssemblyEnd(P,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = PetscLogStagePop();CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"Computing J done.\n");
 
   return ierr;
 }

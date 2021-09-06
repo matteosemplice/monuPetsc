@@ -144,15 +144,21 @@ int main(int argc, char **argv) {
   ierr = SNESGetKSP(snes,&kspJ); CHKERRQ(ierr);
   ierr = KSPGetPC(kspJ,&pcJ); CHKERRQ(ierr);
   ierr = PCSetType(pcJ,PCFIELDSPLIT); CHKERRQ(ierr);
-  ierr = PCFieldSplitSetIS(pcJ,"s",ctx.is[var::s]); CHKERRQ(ierr);
-  ierr = PCFieldSplitSetIS(pcJ,"c",ctx.is[var::c]); CHKERRQ(ierr);
-  ierr = PCFieldSplitSetType(pcJ,PC_COMPOSITE_MULTIPLICATIVE); CHKERRQ(ierr);
 
   //ierr = KSPSetType(kspJ,KSPPREONLY); CHKERRQ(ierr);
   //ierr = PCSetType(pcJ,PCLU); CHKERRQ(ierr);
 
+  ierr = PCFieldSplitSetIS(pcJ,"s",ctx.is[var::s]); CHKERRQ(ierr);
+  ierr = PCFieldSplitSetIS(pcJ,"c",ctx.is[var::c]); CHKERRQ(ierr);
+  ierr = PCFieldSplitSetType(pcJ,PC_COMPOSITE_MULTIPLICATIVE); CHKERRQ(ierr);
+  KSP *subksp;
+  PetscInt nFields;
+  ierr = PCFieldSplitGetSubKSP(pcJ, &nFields, &subksp);CHKERRQ(ierr);
+  ierr = KSPSetType(subksp[var::s],KSPGMRES);
+
   ierr = KSPSetFromOptions(kspJ);
   ierr = PCSetFromOptions(pcJ);
+  ierr = KSPSetFromOptions(subksp[var::s]);
 
   ierr = DMCreateGlobalVector(ctx.daAll,&ctx.U); CHKERRQ(ierr);
   ierr = VecDuplicate(ctx.U,&ctx.U0); CHKERRQ(ierr);
