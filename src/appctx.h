@@ -70,7 +70,7 @@ class sulfationProblem{
   const PetscScalar beta=0.1;
   const PetscScalar mc=100.09;
   const PetscScalar ms=64.06;
-  const PetscScalar d=1.0;
+  const PetscScalar d=0.1;
 
   PetscScalar phi(PetscScalar c) const
     {return alpha*c+beta;}
