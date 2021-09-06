@@ -4,7 +4,7 @@
 
 #include <cassert>
 
-int contaF=0;
+//int contaF=0;
 
 PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec Uin, Vec Uout);
 PetscErrorCode setMatValuesSC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat A);
