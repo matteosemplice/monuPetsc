@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
   //Create DMDA
   ierr = DMDACreate3d(PETSC_COMM_WORLD,
                       DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,
-                      DMDA_STENCIL_STAR, //Note vtk needs BOX with many cpus
+                      DMDA_STENCIL_BOX, //Stencil computation (or at least stencil interpolation check) needs BOX type
                       ctx.nnx,ctx.nny,ctx.nnz, //global dim
                       PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, //n proc on each dim
                       2,stWidth, //dof, stencil width
