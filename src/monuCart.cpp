@@ -195,7 +195,8 @@ int main(int argc, char **argv) {
   //ierr = WriteHDF5(ctx, "errore", ctx.U0); CHKERRQ(ierr);
 
   ////Use Crank-Nicolson
-  ctx.dt   =0.01 * ctx.dx;
+  const PetscScalar cfl=0.01;
+  ctx.dt   =cfl * ctx.dx;
   ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
   //Initial data
@@ -219,7 +220,7 @@ int main(int argc, char **argv) {
     t += ctx.dt;
     ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
     PetscPrintf(PETSC_COMM_WORLD,"t=%f, still %g to go\n",t,std::max(tFinal-t,0.));
-    ctx.dt = ctx.dx;
+    ctx.dt = cfl*ctx.dx;
   }
   //Per lo swap, il finale sta in U0 adesso!
   ierr = WriteHDF5(ctx, "monumento1", ctx.U0);
