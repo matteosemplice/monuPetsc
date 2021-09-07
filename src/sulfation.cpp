@@ -16,6 +16,8 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
   AppContext &ctx = *ctx_p;
 
   PetscPrintf(PETSC_COMM_WORLD,"Computing F\n");
+  //PetscLogDouble timeStart, timeEnd;
+  //ierr=PetscTime(&timeStart);CHKERRQ(ierr);
   //contaF++;
   //if (contaF%100==0)
     //PetscPrintf(PETSC_COMM_WORLD,"Computing F: %d\n",contaF);
@@ -55,6 +57,9 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::c], ctx.POROSloc, &poros);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, U, &u);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, F, &f);CHKERRQ(ierr);
+
+  //ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
+  //PetscPrintf(PETSC_COMM_SELF,"%d] Computing F done (%f s).\n",ctx.rank,timeEnd-timeStart);
 
   return ierr;
 }
@@ -111,7 +116,9 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   AppContext &ctx = *ctx_p;
 
   PetscPrintf(PETSC_COMM_WORLD,"Computing J\n");
-  ierr = PetscLogStagePush(ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
+  PetscLogDouble timeStart, timeEnd;
+  ierr=PetscTime(&timeStart);CHKERRQ(ierr);
+  //ierr = PetscLogStagePush(ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
 
   //Vec UinLoc;
   //ierr = DMGetLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
@@ -144,8 +151,10 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   ierr = MatAssemblyBegin(P,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
     //ierr = DMRestoreLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
   ierr = MatAssemblyEnd(P,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = PetscLogStagePop();CHKERRQ(ierr);
-  PetscPrintf(PETSC_COMM_WORLD,"Computing J done.\n");
+  //ierr = PetscLogStagePop();CHKERRQ(ierr);
+
+  ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_SELF,"%d] Computing J done (%f s).\n",ctx.rank,timeEnd-timeStart);
 
   return ierr;
 }

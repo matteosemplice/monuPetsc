@@ -123,14 +123,14 @@ int main(int argc, char **argv) {
 
   //load level-set function
   ierr = setPhi(ctx); CHKERRQ(ierr);
-  ierr = PetscLogStagePush(ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
+  //ierr = PetscLogStagePush(ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
   ierr = setNormals(ctx); CHKERRQ(ierr);
   ierr = setBoundaryPoints(ctx); CHKERRQ(ierr);
-  ierr = PetscLogStagePop();CHKERRQ(ierr);
+  //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
-  ierr = PetscLogStagePush(ctx.logStages[STENCILS]);CHKERRQ(ierr);
+  //ierr = PetscLogStagePush(ctx.logStages[STENCILS]);CHKERRQ(ierr);
   ierr = setGhost(ctx); CHKERRQ(ierr);
-  ierr = PetscLogStagePop();CHKERRQ(ierr);
+  //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
   ierr = DMCreateMatrix(ctx.daAll,&ctx.J);CHKERRQ(ierr);
   ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE); CHKERRQ(ierr);
@@ -203,9 +203,9 @@ int main(int argc, char **argv) {
     ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS);CHKERRQ(ierr);
 
     ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
-    ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
+    //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
     ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
-    ierr = PetscLogStagePop();CHKERRQ(ierr);
+    //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
     t += ctx.dt;
     ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
