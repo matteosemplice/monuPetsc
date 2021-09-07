@@ -168,8 +168,8 @@ int main(int argc, char **argv) {
   ierr = DMCreateLocalVector(ctx.daField[var::c],&ctx.POROSloc); CHKERRQ(ierr);
 
   ierr = DMCreateGlobalVector(ctx.daField[var::s], &ctx.Sigma); CHKERRQ(ierr);
-  ierr = setSigma(ctx); CHKERRQ(ierr);
-  ierr = setGamma(ctx); CHKERRQ(ierr);
+  //ierr = setSigma(ctx); CHKERRQ(ierr);
+  //ierr = setGamma(ctx); CHKERRQ(ierr);
 
   ierr = SNESSetFunction(snes,ctx.F      ,FormSulfationF,(void *) &ctx); CHKERRQ(ierr);
   ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormSulfationJ,(void *) &ctx); CHKERRQ(ierr);
