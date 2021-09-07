@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
 
   //Initial data
   ierr = setInitialData(ctx, ctx.U0); CHKERRQ(ierr);
-  ierr = WriteHDF5(ctx, "monumento0", ctx.U0);
+  ierr = WriteHDF5(ctx, "monumento_00000", ctx.U0);
 
   //Perform mallocs in ctx.J...
   // THIS IS A BAD TRICK!
@@ -206,7 +206,8 @@ int main(int argc, char **argv) {
 
   PetscScalar t = 0.;
   const PetscScalar tFinal = 1.0;
-  //while (t<tFinal)
+  int passo=0;
+  while (t<tFinal)
   {
     if (t+ctx.dt>=tFinal)
       ctx.dt = (tFinal - t) + 1.e-15;
@@ -218,13 +219,19 @@ int main(int argc, char **argv) {
     ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
     //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
+    passo++;
+    {
+      char  filename[256];
+      sprintf(filename, "monumento_%05d",passo);
+      ierr = WriteHDF5(ctx, filename, ctx.U);
+    }
     t += ctx.dt;
     ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
     PetscPrintf(PETSC_COMM_WORLD,"t=%f, still %g to go\n",t,std::max(tFinal-t,0.));
     ctx.dt = cfl*ctx.dx;
   }
   //Per lo swap, il finale sta in U0 adesso!
-  ierr = WriteHDF5(ctx, "monumento1", ctx.U0);
+  //ierr = WriteHDF5(ctx, "monumento1", ctx.U0);
 
   ierr = SNESDestroy(&snes); CHKERRQ(ierr);
   ierr = cleanUpContext(ctx); CHKERRQ(ierr);
