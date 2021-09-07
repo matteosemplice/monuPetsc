@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
   //ierr = WriteHDF5(ctx, "errore", ctx.U0); CHKERRQ(ierr);
 
   ////Use Crank-Nicolson
-  ctx.dt   =ctx.dx;
+  ctx.dt   =0.01 * ctx.dx;
   ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
   //Initial data
