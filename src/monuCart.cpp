@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
 
   ////Use Crank-Nicolson
   ctx.dt   =ctx.dx;
-  //ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
+  ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
   //Initial data
   ierr = setInitialData(ctx, ctx.U0); CHKERRQ(ierr);
