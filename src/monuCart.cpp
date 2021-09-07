@@ -175,14 +175,6 @@ int main(int argc, char **argv) {
   ierr = SNESSetFunction(snes,ctx.F      ,FormSulfationF,(void *) &ctx); CHKERRQ(ierr);
   ierr = SNESSetJacobian(snes,ctx.J,ctx.J,FormSulfationJ,(void *) &ctx); CHKERRQ(ierr);
 
-  //Perform mallocs in ctx.J...
-  // THIS IS A BAD TRICK!
-  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS ,PETSC_TRUE); CHKERRQ(ierr);
-  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE); CHKERRQ(ierr);
-  ierr = FormSulfationJ(snes,ctx.U0,ctx.J,ctx.J,(void *) &ctx); CHKERRQ(ierr);
-  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS ,PETSC_FALSE); CHKERRQ(ierr);
-  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_TRUE); CHKERRQ(ierr);
-  ierr = PetscBarrier(NULL);
   //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
   //PetscPrintf(PETSC_COMM_WORLD,"Solving...\n");
   //ierr = setInitialData(ctx, ctx.U0);
@@ -202,6 +194,15 @@ int main(int argc, char **argv) {
   //Initial data
   ierr = setInitialData(ctx, ctx.U0); CHKERRQ(ierr);
   ierr = WriteHDF5(ctx, "monumento0", ctx.U0);
+
+  //Perform mallocs in ctx.J...
+  // THIS IS A BAD TRICK!
+  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS ,PETSC_TRUE); CHKERRQ(ierr);
+  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE); CHKERRQ(ierr);
+  ierr = FormSulfationJ(snes,ctx.U0,ctx.J,ctx.J,(void *) &ctx); CHKERRQ(ierr);
+  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS ,PETSC_FALSE); CHKERRQ(ierr);
+  ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_TRUE); CHKERRQ(ierr);
+  ierr = PetscBarrier(NULL);
 
   PetscScalar t = 0.;
   const PetscScalar tFinal = 1.0;
