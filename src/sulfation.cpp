@@ -191,7 +191,7 @@ PetscErrorCode setMatValuesCSCC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat
         PetscScalar vals[2]={1.,0.};
         if(nodetype[k][j][i]==N_INACTIVE)
         { //identity matrix
-          MatSetValuesStencil(A,1,&row,2,cols,vals,INSERT_VALUES);
+          MatSetValuesStencil(A,1,&row,1,cols,vals,INSERT_VALUES);
         }
         else if(nodetype[k][j][i]>=N_INSIDE ) //inner and ghosts
         {
