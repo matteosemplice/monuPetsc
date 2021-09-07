@@ -154,7 +154,27 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
   ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
-  PetscPrintf(PETSC_COMM_SELF,"%d] Computing J done (%f s).\n",ctx.rank,timeEnd-timeStart);
+  //PetscPrintf(PETSC_COMM_SELF,"%d] Computing J done (%f s).\n",ctx.rank,timeEnd-timeStart);
+
+  timeEnd-=timeStart;
+  MPI_Reduce(
+    (void *) &timeEnd,
+    (void *) &timeStart,
+    1,
+    MPI_DOUBLE,
+    MPI_MAX,
+    0,
+    PETSC_COMM_WORLD);
+  PetscPrintf(PETSC_COMM_WORLD,"%d] Computing J done (%f - ",ctx.rank,timeStart);
+  MPI_Reduce(
+    (void *) &timeEnd,
+    (void *) &timeStart,
+    1,
+    MPI_DOUBLE,
+    MPI_MIN,
+    0,
+    PETSC_COMM_WORLD);
+  PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
 
   return ierr;
 }
