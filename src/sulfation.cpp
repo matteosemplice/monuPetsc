@@ -36,7 +36,7 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
 
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayRead(ctx.daField[var::c], ctx.POROSloc, &poros);CHKERRQ(ierr);
-  ierr = DMDAVecGetArrayDOFRead(ctx.daAll, U, &u);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayDOFRead(ctx.daAll, ctx.Uloc, &u);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayDOFRead(ctx.daAll, F, &f);CHKERRQ(ierr);
 
   for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
@@ -46,6 +46,21 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
         if(nodetype[k][j][i]==N_INSIDE)
           f[k][j][i][var::s] = poros[k][j][i] * u[k][j][i][var::s]
                                + ctx.dt * (ctx.theta-1.0) * f[k][j][i][var::s];
+        if(nodetype[k][j][i]>=0){ //ghost points
+          f[k][j][i][var::s] = 0.;
+          if (nodetype[k][j][i] < ctx.nn123){ // Ghost.Phi1
+            ghost & current = ctx.Ghost.Phi1[nodetype[k][j][i]];
+            for(int cont=0;cont<27;++cont){
+              int kg_ghost=current.stencil[cont];
+              int i_ghost, j_ghost, k_ghost;
+              nGlob2IJK(ctx, kg_ghost, i_ghost, j_ghost, k_ghost);
+              f[k][j][i][var::s] += current.coeffsD[cont] * u[k_ghost][j_ghost][i_ghost][var::s];
+            }
+          } else {
+            // Ghost.Bdy
+            SETERRQ(PETSC_COMM_SELF,1,"Not (yet) implemented");
+          }
+        }
         if(nodetype[k][j][i]>=N_INSIDE) //inner and ghost points
           f[k][j][i][var::c] = u[k][j][i][var::c]
                                + ctx.dt * (ctx.theta-1.0) * f[k][j][i][var::c];
@@ -55,7 +70,7 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
 
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::c], ctx.POROSloc, &poros);CHKERRQ(ierr);
-  ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, U, &u);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, ctx.Uloc, &u);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, F, &f);CHKERRQ(ierr);
 
   //ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
@@ -352,8 +367,9 @@ PetscErrorCode setInitialData(AppContext &ctx, Vec U0){
 
 PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec UinLoc, Vec Uout)
 {
-  // Uout = (rho*s;c) +alpha*f(s,c)
+  // Uout = f(s,c)
   // dove f(s,c) è il RHS della ODE solfatazione
+  // Nei ghost per s usa operatore lineare di interpolazione
 
   PetscErrorCode ierr;
 
@@ -378,7 +394,7 @@ PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec UinLoc, Vec Uout)
         const PetscScalar cRhoS = uIn[k][j][i][var::c] * poros[k][j][i] * uIn[k][j][i][var::s];
         if (nodetype[k][j][i]==N_INACTIVE) {
           uOut[k][j][i][var::s] = 0.;
-          uOut[k][j][i][var::s] = 0.;
+          uOut[k][j][i][var::c] = 0.;
         } else if(nodetype[k][j][i]==N_INSIDE){
           const PetscScalar porosX1 = (poros[k][j][i] + poros[k][j][i-1]) / 2.;
           const PetscScalar porosX2 = (poros[k][j][i] + poros[k][j][i+1]) / 2.;
@@ -402,7 +418,6 @@ PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec UinLoc, Vec Uout)
           assert(nodetype[k][j][i]>=0);
           uOut[k][j][i][var::s] = 0.;
           if (nodetype[k][j][i] < ctx.nn123){ // Ghost.Phi1
-            uOut[k][j][i][var::c] = - Ac * cRhoS;
             ghost & current = ctx.Ghost.Phi1[nodetype[k][j][i]];
             for(int cont=0;cont<27;++cont){
                 int kg_ghost=current.stencil[cont];
@@ -415,6 +430,7 @@ PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec UinLoc, Vec Uout)
           } else { // Ghost.Bdy
             SETERRQ(PETSC_COMM_SELF,1,"Not (yet) implemented");
           }
+          uOut[k][j][i][var::c] = - Ac * cRhoS;
         }
       }
     }
