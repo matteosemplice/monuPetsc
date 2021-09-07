@@ -130,7 +130,7 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   AppContext * ctx_p = (AppContext *) _ctx;
   AppContext &ctx = *ctx_p;
 
-  PetscPrintf(PETSC_COMM_WORLD,"Computing J\n");
+  PetscPrintf(PETSC_COMM_WORLD,"Computing J ...");
   PetscLogDouble timeStart, timeEnd;
   ierr=PetscTime(&timeStart);CHKERRQ(ierr);
   //ierr = PetscLogStagePush(ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
@@ -180,7 +180,7 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
     MPI_MAX,
     0,
     PETSC_COMM_WORLD);
-  PetscPrintf(PETSC_COMM_WORLD,"%d] Computing J done (%f - ",ctx.rank,timeStart);
+  PetscPrintf(PETSC_COMM_WORLD," done in (%f - ",ctx.rank,timeStart);
   MPI_Reduce(
     (void *) &timeEnd,
     (void *) &timeStart,
