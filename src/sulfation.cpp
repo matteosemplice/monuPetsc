@@ -392,6 +392,7 @@ PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec UinLoc, Vec Uout)
   }
 
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayRead(ctx.daField[var::c], POROSloc, &poros);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, UinLoc, &uIn);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, Uout, &uOut);CHKERRQ(ierr);
 
