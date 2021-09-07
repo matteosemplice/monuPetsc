@@ -464,10 +464,10 @@ PetscErrorCode findBoundaryPoints(
   return ierr;
 }
 
-void scriviListaPunti(std::vector<shiftedStencil> lista, const char * basename){
+void scriviListaPunti(std::vector<shiftedStencil> lista, const char * basename, int rank){
   FILE *file;
   char  filename[256];
-  sprintf(filename, "%s.vtu",basename);
+  sprintf(filename, "%s_%d.vtu",basename,rank);
   file = fopen(filename, "w");
   fprintf(file, "<VTKFile type=\"UnstructuredGrid\" byte_order=\"LittleEndian\">\n");
 
@@ -505,6 +505,26 @@ void scriviListaPunti(std::vector<shiftedStencil> lista, const char * basename){
 
   fprintf(file, "   </Piece> \n");
   fprintf(file, "</UnstructuredGrid>\n");
+  fprintf(file, "</VTKFile>\n");
+  fclose(file);
+}
+
+void scriviListaPuntiPVTU(const char * basename, int size){
+  FILE *file;
+  char  filename[256];
+  sprintf(filename, "%s.pvtu",basename);
+  file = fopen(filename, "w");
+  fprintf(file, "<VTKFile type=\"PUnstructuredGrid\" byte_order=\"LittleEndian\">\n");
+  fprintf(file, "<PUnstructuredGrid>\n");
+  fprintf(file, "  <PPointData Scalars=\"nShifts\"> \n");
+  fprintf(file, "    <PDataArray type=\"UInt8\" Name=\"nShifts\" />\n");
+  fprintf(file, "  </PPointData> \n");
+  fprintf(file, "  <PPoints>\n");
+  fprintf(file, "   <PDataArray name=\"Position\" type=\"Float32\" NumberOfComponents=\"3\" /> \n");
+  fprintf(file, "  </PPoints>\n");
+  for (int proc=0; proc<size; proc++)
+    fprintf(file, "  <Piece Source=\"%s_%d.vtu\"/>\n", basename,proc);
+  fprintf(file, "</PUnstructuredGrid>\n");
   fprintf(file, "</VTKFile>\n");
   fclose(file);
 }
@@ -700,8 +720,9 @@ PetscErrorCode setGhost(AppContext &ctx)
     PetscPrintf(PETSC_COMM_WORLD,"set ghost stencils ...DONE\n");
 
     PetscPrintf(PETSC_COMM_SELF,"------- %d punti critici\n",critici.size());
-    scriviListaPunti(critici,"critici");
-
+    scriviListaPunti(critici,"critici",ctx.rank);
+    if (ctx.rank==0)
+      scriviListaPuntiPVTU("critici",ctx.size);
     return ierr;
 }
 

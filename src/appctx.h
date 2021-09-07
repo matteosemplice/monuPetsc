@@ -83,7 +83,7 @@ typedef struct {
   PetscInt nnx,nny,nnz,nn123; //no. of points in DMDA
   PetscScalar xmin, xmax, ymin, ymax, zmin, zmax; //domain bounding box
   PetscScalar dx,dy,dz; //cell size
-  PetscInt rank;  //rank of processor
+  PetscInt rank, size;  //rank of processor
   DM daAll;       //global DA
   DMDALocalInfo daInfo;//, daInfoC, daInfoS;
   IS *is;

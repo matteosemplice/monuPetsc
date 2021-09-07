@@ -35,6 +35,8 @@ PetscErrorCode WriteHDF5(AppContext &ctx, const char * basename, Vec U){
 
   //levelset function
   ierr = VecView(ctx.Phi,viewer); CHKERRQ(ierr);
+  PetscObjectSetName((PetscObject) ctx.NODETYPE, "NodeType");
+  ierr = VecView(ctx.NODETYPE,viewer); CHKERRQ(ierr);
 
   ierr = PetscViewerDestroy(&viewer); CHKERRQ(ierr);
 
@@ -81,6 +83,9 @@ PetscErrorCode WriteHDF5(AppContext &ctx, const char * basename, Vec U){
     fprintf(file, "      </Attribute>\n");
     fprintf(file, "      <Attribute Name=\"Phi\" Center=\"Node\" AttributeType=\"Scalar\">\n");
     fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d %d\">%s:/Phi</DataItem>\n",ctx.nx,ctx.ny,ctx.nz,hdf5name);
+    fprintf(file, "      </Attribute>\n");
+    fprintf(file, "      <Attribute Name=\"NodeType\" Center=\"Node\" AttributeType=\"Scalar\">\n");
+    fprintf(file, "        <DataItem Format=\"HDF\" Dimensions=\"%d %d %d\">%s:/NodeType</DataItem>\n",ctx.nx,ctx.ny,ctx.nz,hdf5name);
     fprintf(file, "      </Attribute>\n");
     break;
     default:

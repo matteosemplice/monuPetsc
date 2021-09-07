@@ -52,7 +52,8 @@ int main(int argc, char **argv) {
 
   //Cpu rank
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&ctx.rank);CHKERRQ(ierr);
-  PetscPrintf(PETSC_COMM_SELF,"CPU Rank=%d\n",ctx.rank); //numero della CPU=0,1,2,...
+  ierr = MPI_Comm_size(PETSC_COMM_WORLD,&ctx.size);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_SELF,"CPU Rank=%d of %d\n",ctx.rank,ctx.size); //numero della CPU=0,1,2,...
 
   //Space dimensions
   //ierr = PetscOptionsGetInt(NULL,NULL,"-dim",&ctx.dim,NULL);CHKERRQ(ierr);
