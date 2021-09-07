@@ -3,7 +3,7 @@
 # or in the PetscDef.make file
 include PetscDef.make
 
-CXXFLAGS         = -g -O0
+CXXFLAGS         = -g
 
 # defines: passed to compiler on command-line
 DEFS =
