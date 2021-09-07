@@ -92,10 +92,10 @@ int main(int argc, char **argv) {
     ctx.mgLevels=0;
   }
 
-  ierr = PetscLogStageRegister("Boundary", &ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
-  ierr = PetscLogStageRegister("Stencils", &ctx.logStages[STENCILS]);CHKERRQ(ierr);
-  ierr = PetscLogStageRegister("Assembly", &ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
-  ierr = PetscLogStageRegister("Solve",    &ctx.logStages[SOLVING]);CHKERRQ(ierr);
+  //ierr = PetscLogStageRegister("Boundary", &ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
+  //ierr = PetscLogStageRegister("Stencils", &ctx.logStages[STENCILS]);CHKERRQ(ierr);
+  //ierr = PetscLogStageRegister("Assembly", &ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
+  //ierr = PetscLogStageRegister("Solve",    &ctx.logStages[SOLVING]);CHKERRQ(ierr);
 
   //Create DMDA
   ierr = DMDACreate3d(PETSC_COMM_WORLD,
