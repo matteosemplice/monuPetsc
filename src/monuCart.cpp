@@ -198,7 +198,7 @@ int main(int argc, char **argv) {
 
   //Initial data
   ierr = setInitialData(ctx, ctx.U0); CHKERRQ(ierr);
-  ierr = hdf5Output.writeHDF5(ctx.U0, 0.);
+  ierr = hdf5Output.writeHDF5(ctx.U0, 0.,true);
 
   //Perform mallocs in ctx.J...
   // THIS IS A BAD TRICK!
@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
   PetscScalar t = 0.;
   const PetscScalar tFinal = 1.0;
   int passo=0;
-  while (passo<3)//(t<tFinal)
+  while (t<tFinal)
   {
     if (t+ctx.dt>=tFinal)
       ctx.dt = (tFinal - t) + 1.e-15;
@@ -226,13 +226,11 @@ int main(int argc, char **argv) {
 
     passo++;
     t += ctx.dt;
-    ierr = hdf5Output.writeHDF5(ctx.U, t);
+    ierr = hdf5Output.writeHDF5(ctx.U, t,true);
     ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
     PetscPrintf(PETSC_COMM_WORLD,"****** t=%f, still %g to go *****\n",t,std::max(tFinal-t,0.));
     ctx.dt = cfl*ctx.dx;
   }
-  //Per lo swap, il finale sta in U0 adesso!
-  //ierr = WriteHDF5(ctx, "monumento1", ctx.U0);
 
   hdf5Output.writeSimulationXDMF();
 
