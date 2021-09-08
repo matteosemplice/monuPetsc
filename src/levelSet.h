@@ -2,13 +2,14 @@
 #define LEVELSET_H
 
 #include "appctx.h"
+#include "domains.h"
 
 #define N_INACTIVE  -4
 #define N_GHOSTBDY  -3
 #define N_GHOSTPHI1 -2
 #define N_INSIDE    -1
 
-PetscErrorCode setPhi(AppContext &ctx);
+PetscErrorCode setPhi(AppContext &ctx, levelSetFPointer domain);
 PetscErrorCode setNormals(AppContext &ctx);
 PetscErrorCode setBoundaryPoints(AppContext &ctx);
 

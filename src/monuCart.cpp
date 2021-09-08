@@ -28,6 +28,7 @@ static char help[] = "Cartesian monument sulfation\n";
 #include <petscsys.h>
 
 #include "appctx.h"
+#include "domains.h"
 //#include "sulfation1d.h"
 //#include "sulfation2d.h"
 //#include "sulfation3d.h"
@@ -123,7 +124,9 @@ int main(int argc, char **argv) {
   ierr = DMCreateFieldDecomposition(ctx.daAll,NULL, NULL, &ctx.is, &ctx.daField); CHKERRQ(ierr);
 
   //load level-set function
-  ierr = setPhi(ctx); CHKERRQ(ierr);
+  levelSetFPointer domain;
+  ierr = getDomainFromOptions(domain);
+  ierr = setPhi(ctx,domain); CHKERRQ(ierr);
   //ierr = PetscLogStagePush(ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
   ierr = setNormals(ctx); CHKERRQ(ierr);
   ierr = setBoundaryPoints(ctx); CHKERRQ(ierr);

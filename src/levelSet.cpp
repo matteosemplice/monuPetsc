@@ -3,8 +3,6 @@
 #include <petscdmda.h>
 #include <bitset>
 
-PetscScalar Phi1_(DMDACoor3d p);
-
 template <typename T>
 inline int SGN(T x)
 {
@@ -49,7 +47,7 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   std::vector<shiftedStencil> &critici);
 
 
-PetscErrorCode setPhi(AppContext &ctx)
+PetscErrorCode setPhi(AppContext &ctx, levelSetFPointer Phi_)
 /**************************************************************************/
 {
   PetscErrorCode ierr;
@@ -66,7 +64,7 @@ PetscErrorCode setPhi(AppContext &ctx)
   for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++)
     for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++)
       for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++)
-        phi[k][j][i]=Phi1_(P[k][j][i]);
+        phi[k][j][i]=(*Phi_)(P[k][j][i]);
 
   ierr = DMDAVecRestoreArrayWrite(ctx.daField[var::s],ctx.Phi,&phi); CHKERRQ(ierr);
 
@@ -1122,24 +1120,4 @@ PetscScalar checkInterp(AppContext &ctx,DMDACoor3d ***P,PetscScalar xC,PetscScal
     value += coeffsD[p] * pValue;
   }
   return (value-1.0);
-}
-
-PetscScalar Phi1_(DMDACoor3d p)
-{
-  //const PetscScalar x0=sqrt(2.)/30.;
-  //const PetscScalar y0=sqrt(3.)/40.;
-  //const PetscScalar z0=-sqrt(2.)/50.;
-  ////PetscScalar radius=0.786;
-  //const PetscScalar aa=0.786;
-  //const PetscScalar bb=0.386;
-  //const PetscScalar cc=0.586;
-  //return pow((p.x-x0)/aa,2)+pow((p.y-y0)/bb,2)+pow((p.z-z0)/cc,2)-1;
-  const PetscScalar x0=0.;
-  const PetscScalar y0=0.;
-  const PetscScalar z0=0.;
-  const PetscScalar aa=1.;
-  const PetscScalar bb=1.;
-  const PetscScalar cc=1.;
-  return pow((p.x-x0)/aa,2)+pow((p.y-y0)/bb,2)+pow((p.z-z0)/cc,2)-0.7*0.7;
-
 }
