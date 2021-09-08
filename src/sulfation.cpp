@@ -419,13 +419,13 @@ PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec UinLoc, Vec Uout)
 
           uOut[k][j][i][var::s] = - As * cRhoS
                                   + ctx.pb.d*(
-                                  ((porosX1+porosX2)/dx2+(porosY1+porosY2)/dy2+(porosZ1+porosZ2)/dz2) * uIn[k][j][i][var::s]
-                                  -porosX1/dx2 * uIn[k][j][i-1][var::s]
-                                  -porosX2/dx2 * uIn[k][j][i+1][var::s]
-                                  -porosY1/dy2 * uIn[k][j-1][i][var::s]
-                                  -porosY2/dy2 * uIn[k][j+1][i][var::s]
-                                  -porosZ1/dz2 * uIn[k-1][j][i][var::s]
-                                  -porosZ2/dz2 * uIn[k+1][j][i][var::s]
+                                  -((porosX1+porosX2)/dx2+(porosY1+porosY2)/dy2+(porosZ1+porosZ2)/dz2) * uIn[k][j][i][var::s]
+                                  +porosX1/dx2 * uIn[k][j][i-1][var::s]
+                                  +porosX2/dx2 * uIn[k][j][i+1][var::s]
+                                  +porosY1/dy2 * uIn[k][j-1][i][var::s]
+                                  +porosY2/dy2 * uIn[k][j+1][i][var::s]
+                                  +porosZ1/dz2 * uIn[k-1][j][i][var::s]
+                                  +porosZ2/dz2 * uIn[k+1][j][i][var::s]
                                   );
           uOut[k][j][i][var::c] = - Ac * cRhoS;
         } else { //ghost points

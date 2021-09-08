@@ -996,8 +996,10 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
 PetscErrorCode setMatValuesHelmoltz(AppContext &ctx, DM da, Vec Gamma, Vec Sigma, PetscScalar nu, Mat A)
 {
   //Calls MatSetValues on A to insert values for the linear operator
-  // u -> sigma*u + alpha* Div( gamma Grad u) on inner nodes
-  // interpolation of u on xB for ghost nodes
+  // u -> sigma*u + nu* Div( gamma Grad u) on inner nodes
+  // interpolation of u on xB for ghost nodes.
+  // If you really want -nu*Laplacian, then just pass in
+  // a negative value for nu and don't mess with this routine!
   //
   // The matrix A should already exist and
   // assembly routines should be called afterwards by the caller.
@@ -1042,19 +1044,19 @@ PetscErrorCode setMatValuesHelmoltz(AppContext &ctx, DM da, Vec Gamma, Vec Sigma
           PetscInt ncols = 0;
           rows.i = i; rows.j = j; rows.k = k;  rows.c=var::s;
           cols[ncols].i = i; cols[ncols].j = j; cols[ncols].k = k; cols[ncols].c=var::s;
-          vals[ncols++] = sigmaC+ (gammaX1+gammaX2)/dx2+(gammaY1+gammaY2)/dy2+(gammaZ1+gammaZ2)/dz2;
+          vals[ncols++] = sigmaC- (gammaX1+gammaX2)/dx2+(gammaY1+gammaY2)/dy2+(gammaZ1+gammaZ2)/dz2;
           cols[ncols].i = i-1; cols[ncols].j = j; cols[ncols].k = k; cols[ncols].c=var::s;
-          vals[ncols++] = -gammaX1/dx2;
+          vals[ncols++] = gammaX1/dx2;
           cols[ncols].i = i+1; cols[ncols].j = j; cols[ncols].k = k; cols[ncols].c=var::s;
-          vals[ncols++] = -gammaX2/dx2;
+          vals[ncols++] = gammaX2/dx2;
           cols[ncols].i = i; cols[ncols].j = j-1; cols[ncols].k = k; cols[ncols].c=var::s;
-          vals[ncols++] = -gammaY1/dy2;
+          vals[ncols++] = gammaY1/dy2;
           cols[ncols].i = i; cols[ncols].j = j+1; cols[ncols].k = k; cols[ncols].c=var::s;
-          vals[ncols++] = -gammaY2/dy2;                    
+          vals[ncols++] = gammaY2/dy2;
           cols[ncols].i = i; cols[ncols].j = j; cols[ncols].k = k-1; cols[ncols].c=var::s;
-          vals[ncols++] = -gammaZ1/dz2;
+          vals[ncols++] = gammaZ1/dz2;
           cols[ncols].i = i; cols[ncols].j = j; cols[ncols].k = k+1; cols[ncols].c=var::s;
-          vals[ncols++] = -gammaZ2/dz2;
+          vals[ncols++] = gammaZ2/dz2;
 
           MatSetValuesStencil(A,1,&rows,ncols,cols,vals,INSERT_VALUES);
         }
