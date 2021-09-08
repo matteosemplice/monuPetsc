@@ -94,6 +94,8 @@ int main(int argc, char **argv) {
     ctx.mgLevels=0;
   }
 
+  HDF5output hdf5Output("monumento",ctx);
+
   //ierr = PetscLogStageRegister("Boundary", &ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
   //ierr = PetscLogStageRegister("Stencils", &ctx.logStages[STENCILS]);CHKERRQ(ierr);
   //ierr = PetscLogStageRegister("Assembly", &ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
@@ -190,13 +192,13 @@ int main(int argc, char **argv) {
   //ierr = WriteHDF5(ctx, "errore", ctx.U0); CHKERRQ(ierr);
 
   ////Use Crank-Nicolson
-  const PetscScalar cfl=0.01;
+  const PetscScalar cfl=0.05;
   ctx.dt   =cfl * ctx.dx;
   ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
   //Initial data
   ierr = setInitialData(ctx, ctx.U0); CHKERRQ(ierr);
-  ierr = WriteHDF5(ctx, "monumento_00000", ctx.U0);
+  ierr = hdf5Output.writeHDF5(ctx.U0, 0.);
 
   //Perform mallocs in ctx.J...
   // THIS IS A BAD TRICK!
@@ -210,7 +212,7 @@ int main(int argc, char **argv) {
   PetscScalar t = 0.;
   const PetscScalar tFinal = 1.0;
   int passo=0;
-  while (t<tFinal)
+  while (passo<3)//(t<tFinal)
   {
     if (t+ctx.dt>=tFinal)
       ctx.dt = (tFinal - t) + 1.e-15;
@@ -223,18 +225,16 @@ int main(int argc, char **argv) {
     //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
     passo++;
-    {
-      char  filename[256];
-      sprintf(filename, "monumento_%05d",passo);
-      ierr = WriteHDF5(ctx, filename, ctx.U);
-    }
     t += ctx.dt;
+    ierr = hdf5Output.writeHDF5(ctx.U, t);
     ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
     PetscPrintf(PETSC_COMM_WORLD,"****** t=%f, still %g to go *****\n",t,std::max(tFinal-t,0.));
     ctx.dt = cfl*ctx.dx;
   }
   //Per lo swap, il finale sta in U0 adesso!
   //ierr = WriteHDF5(ctx, "monumento1", ctx.U0);
+
+  hdf5Output.writeSimulationXDMF();
 
   ierr = SNESDestroy(&snes); CHKERRQ(ierr);
   ierr = cleanUpContext(ctx); CHKERRQ(ierr);
