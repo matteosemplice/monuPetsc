@@ -908,11 +908,6 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
     }
   }
 
-  PetscScalar interpError = checkInterp(ctx,P,xC,yC,zC,stencil,coeffsD);
-  if (fabs(interpError)>1e-14){
-    PetscPrintf(PETSC_COMM_SELF,"Interpolation error for quadratic function at node %d=(%d,%d,%d): %e\n",kg,i,j,k,interpError);
-  }
-
   if (nShifts>0){
     //PetscPrintf(PETSC_COMM_SELF,"node %d has %d shifts\n",kg,nShifts);
     critici.push_back({xC,yC,zC,nShifts});

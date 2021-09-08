@@ -32,12 +32,14 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
   //ierr = DMRestoreLocalVector(ctx.daAll,&UinLoc); CHKERRQ(ierr);
 
   PetscScalar ****u, ****f;
+  PetscScalar ****rhs;
   PetscScalar ***nodetype, ***poros;
 
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayRead(ctx.daField[var::c], ctx.POROSloc, &poros);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayDOFRead(ctx.daAll, ctx.Uloc, &u);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayDOFRead(ctx.daAll, F, &f);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayDOFRead(ctx.daAll, ctx.RHS, &rhs);CHKERRQ(ierr);
 
   for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
     for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
@@ -64,6 +66,13 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
         if(nodetype[k][j][i]>=N_INSIDE) //inner and ghost points
           f[k][j][i][var::c] = u[k][j][i][var::c]
                                + ctx.dt * (ctx.theta-1.0) * f[k][j][i][var::c];
+
+        if(nodetype[k][j][i]>=N_INSIDE)
+          printf("F(U): (%d,%d,%d) type=%d   fs=%f-%f=%f fc=%f-%f=%f   s0=%f c0=%f\n",
+               i,j,k,(int)nodetype[k][j][i],
+               f[k][j][i][var::s],rhs[k][j][i][var::s],f[k][j][i][var::s]-rhs[k][j][i][var::s],
+               f[k][j][i][var::c],rhs[k][j][i][var::c],f[k][j][i][var::c]-rhs[k][j][i][var::c],
+               u[k][j][i][var::s],u[k][j][i][var::c]);
       }
     }
   }
@@ -72,6 +81,8 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::c], ctx.POROSloc, &poros);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, ctx.Uloc, &u);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, F, &f);CHKERRQ(ierr);
+
+  ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, ctx.RHS, &rhs);CHKERRQ(ierr);
 
   //ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
   //PetscPrintf(PETSC_COMM_SELF,"%d] Computing F done (%f s).\n",ctx.rank,timeEnd-timeStart);
