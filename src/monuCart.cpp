@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
     }
     t += ctx.dt;
     ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"t=%f, still %g to go\n",t,std::max(tFinal-t,0.));
+    PetscPrintf(PETSC_COMM_WORLD,"****** t=%f, still %g to go *****\n",t,std::max(tFinal-t,0.));
     ctx.dt = cfl*ctx.dx;
   }
   //Per lo swap, il finale sta in U0 adesso!
