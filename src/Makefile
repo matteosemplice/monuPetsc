@@ -22,7 +22,7 @@ EXTRAHDR=${EXTRASRC:%.cpp=%.h}
 
 all: ${EXE}
 
-${EXE}: ${MAIN:.cpp=.o} ${EXTRAOBJS} ${EXTRAHDR}
+${EXE}: ${MAIN:.cpp=.o} ${EXTRAOBJS} ${EXTRAHDR} appctx.h
 	-${CXXLINKER} -o ${EXE} ${DEFS} ${MAIN:.cpp=.o} ${EXTRAOBJS} ${PETSC_DM_LIB} ${PETSC_SNES_LIB} ${PETSC_KSP_LIB} ${PETSC_SYS_LIB}
 
 testHDF5: testHDF5.o appctx.h
