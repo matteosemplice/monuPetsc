@@ -719,7 +719,18 @@ PetscErrorCode setGhost(AppContext &ctx)
     }
     PetscPrintf(PETSC_COMM_WORLD,"set ghost stencils ...DONE\n");
 
-    PetscPrintf(PETSC_COMM_SELF,"------- %d punti critici\n",critici.size());
+    const int locShifted=critici.size();
+    int totShifted;
+    MPI_Reduce(
+    (void *) &locShifted,
+    (void *) &totShifted,
+    1,
+    MPI_INT,
+    MPI_SUM,
+    0,
+    PETSC_COMM_WORLD);
+    PetscPrintf(PETSC_COMM_WORLD,"%d shifted stencils\n",totShifted);
+
     scriviListaPunti(critici,"critici",ctx.rank);
     if (ctx.rank==0)
       scriviListaPuntiPVTU("critici",ctx.size);
