@@ -64,8 +64,8 @@ class sulfationProblem{
   public:
   const PetscScalar c0=10.;
   const PetscScalar s0=0.;
-  const PetscScalar sExt=0.001;
-  const PetscScalar a=0.0;
+  const PetscScalar sExt=0.01;
+  const PetscScalar a=1.0e3;
   const PetscScalar alpha=0.01;
   const PetscScalar beta=0.1;
   const PetscScalar mc=100.09;
