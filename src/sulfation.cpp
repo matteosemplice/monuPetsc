@@ -105,9 +105,12 @@ PetscErrorCode FormSulfationRHS(AppContext &ctx,Vec U0,Vec F0){
     for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
       for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
         //const PetscScalar cRhoS = uIn[k][j][i][var::c] * poros[k][j][i] * uIn[k][j][i][var::s];
-        if(nodetype[k][j][i]==N_INSIDE)
+        if(nodetype[k][j][i]==N_INSIDE){
           f0[k][j][i][var::s] = poros[k][j][i] * u0[k][j][i][var::s]
                                + ctx.dt * ctx.theta * f0[k][j][i][var::s];
+          f0[k][j][i][var::c] = u0[k][j][i][var::c]
+                               + ctx.dt * ctx.theta * f0[k][j][i][var::c];
+        }
         if(nodetype[k][j][i]>=0){ //ghost points
           f0[k][j][i][var::s] = ctx.pb.sExt;
           f0[k][j][i][var::c] = u0[k][j][i][var::c]
