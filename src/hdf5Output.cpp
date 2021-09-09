@@ -166,7 +166,7 @@ void HDF5output::writeLastXDMF(){
 
   if (ctx.rank==0){
     char  xdmfname[256];
-    PetscSNPrintf(xdmfname,256,"%s_%d.xdmf",basename,stepBuffer.size());
+    PetscSNPrintf(xdmfname,256,"%s_%d.xdmf",basename,stepBuffer.size()-1);
 
     std::ofstream xdmf;
     xdmf.open(xdmfname,std::ios_base::out);
