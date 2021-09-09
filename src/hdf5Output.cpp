@@ -42,17 +42,6 @@ PetscErrorCode HDF5output::writeHDF5(Vec U, PetscScalar time, bool singleXDMF){
   std::stringstream buffer;
 
   if (ctx.rank==0){
-    char  xdmfname[256];
-    PetscSNPrintf(xdmfname,256,"%s_%d.xdmf",basename,stepBuffer.size());
-
-    std::ofstream xdmf;
-    xdmf.open(xdmfname,std::ios_base::out);
-
-    xdmf   << "<?xml version=\"1.0\" ?>\n";
-    xdmf   << "<Xdmf xmlns:xi=\"http://www.w3.org/2001/XInclude\" Version=\"2.0\">\n";
-    xdmf   << "<Domain>\n";
-    xdmf   << "  <Grid GridType=\"Collection\" CollectionType=\"Temporal\">\n";
-
     buffer << "    <Grid GridType=\"Uniform\" Name=\"domain\">\n";
     buffer << "      <Time Type=\"Single\" Value=\""<<time<<"\" />\n";
     switch (ctx.dim){
@@ -92,13 +81,6 @@ PetscErrorCode HDF5output::writeHDF5(Vec U, PetscScalar time, bool singleXDMF){
     abort();
     }
     buffer << "    </Grid>\n";
-
-    xdmf   << buffer.str();
-    xdmf   << "  </Grid>\n";
-    xdmf   << "</Domain>\n";
-    xdmf   << "</Xdmf>\n";
-
-    xdmf.close();
   }
 
   //Note: ranks>0 have empty buffers, but stepBuffer.size does increase for everybody
