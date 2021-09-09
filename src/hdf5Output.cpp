@@ -7,18 +7,18 @@
 #include <sstream>
 #include <fstream>
 
-PetscErrorCode writePhi(AppContext &ctx){
+PetscErrorCode HDF5output::writeDomain(AppContext &ctx){
   PetscErrorCode ierr;
 
-  char  hdf5name[256];
-  PetscSNPrintf(hdf5name,256,"%s.h5","dominio");
+  PetscSNPrintf(hdf5DomainName,256,"%s.h5","dominio");
 
   PetscViewer viewer;
-  PetscPrintf(PETSC_COMM_WORLD,"Save on file %s\n",hdf5name);
-  ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,hdf5name,FILE_MODE_WRITE,&viewer); CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"Save domain on file %s\n",hdf5DomainName);
+  ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,hdf5DomainName,FILE_MODE_WRITE,&viewer); CHKERRQ(ierr);
 
   ierr = VecView(ctx.Phi,viewer); CHKERRQ(ierr);
-
+  PetscObjectSetName((PetscObject) ctx.NODETYPE, "NodeType");
+  ierr = VecView(ctx.NODETYPE,viewer); CHKERRQ(ierr);
   ierr = PetscViewerDestroy(&viewer); CHKERRQ(ierr);
 
   std::stringstream buffer;
@@ -52,11 +52,11 @@ PetscErrorCode writePhi(AppContext &ctx){
     buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.dx   << " " << ctx.dy   << " " << ctx.dz   << "</DataItem>\n";
     buffer << "      </Geometry>\n";
     buffer << "      <Attribute Name=\"Phi\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5name<<":/Phi</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5DomainName<<":/Phi</DataItem>\n";
     buffer << "      </Attribute>\n";
-    //buffer << "      <Attribute Name=\"NodeType\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    //buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5name<<":/NodeType</DataItem>\n";
-    //buffer << "      </Attribute>\n";
+    buffer << "      <Attribute Name=\"NodeType\" Center=\"Node\" AttributeType=\"Scalar\">\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5DomainName<<":/NodeType</DataItem>\n";
+    buffer << "      </Attribute>\n";
     break;
     default:
     abort();
@@ -75,6 +75,9 @@ PetscErrorCode writePhi(AppContext &ctx){
 
 PetscErrorCode HDF5output::writeHDF5(Vec U, PetscScalar time, bool singleXDMF){
   PetscErrorCode ierr;
+
+  if (time<nextSave)
+    return 0;
 
   char  hdf5name[256];
   PetscSNPrintf(hdf5name,256,"%s_%d.h5",basename,stepBuffer.size());
@@ -99,9 +102,9 @@ PetscErrorCode HDF5output::writeHDF5(Vec U, PetscScalar time, bool singleXDMF){
   ierr = DMRestoreGlobalVector(ctx.daField[var::c], &uField); CHKERRQ(ierr);
 
   //levelset function and NodeTypes
-  ierr = VecView(ctx.Phi,viewer); CHKERRQ(ierr);
-  PetscObjectSetName((PetscObject) ctx.NODETYPE, "NodeType");
-  ierr = VecView(ctx.NODETYPE,viewer); CHKERRQ(ierr);
+  //ierr = VecView(ctx.Phi,viewer); CHKERRQ(ierr);
+  //PetscObjectSetName((PetscObject) ctx.NODETYPE, "NodeType");
+  //ierr = VecView(ctx.NODETYPE,viewer); CHKERRQ(ierr);
 
   ierr = PetscViewerDestroy(&viewer); CHKERRQ(ierr);
 
@@ -137,10 +140,10 @@ PetscErrorCode HDF5output::writeHDF5(Vec U, PetscScalar time, bool singleXDMF){
     buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5name<<":/C</DataItem>\n";
     buffer << "      </Attribute>\n";
     buffer << "      <Attribute Name=\"Phi\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5name<<":/Phi</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5DomainName<<":/Phi</DataItem>\n";
     buffer << "      </Attribute>\n";
     buffer << "      <Attribute Name=\"NodeType\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5name<<":/NodeType</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5DomainName<<":/NodeType</DataItem>\n";
     buffer << "      </Attribute>\n";
     break;
     default:
@@ -156,6 +159,8 @@ PetscErrorCode HDF5output::writeHDF5(Vec U, PetscScalar time, bool singleXDMF){
   stepBuffer.push_back(tStep);
 
   if (singleXDMF) writeLastXDMF();
+
+  nextSave += dtSave;
 
   return 0;
 }

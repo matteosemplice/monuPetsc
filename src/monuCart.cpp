@@ -94,7 +94,12 @@ int main(int argc, char **argv) {
     ctx.mgLevels=0;
   }
 
-  HDF5output hdf5Output("monumento",ctx);
+  PetscScalar tFinal = 1.0;
+  ierr = PetscOptionsGetScalar(NULL,NULL,"-tfin",&tFinal,NULL);CHKERRQ(ierr);
+  int nSave;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-nsave",&nSave,NULL);CHKERRQ(ierr);
+
+  HDF5output hdf5Output("monumento",ctx,tFinal,nSave);
 
   //ierr = PetscLogStageRegister("Boundary", &ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
   //ierr = PetscLogStageRegister("Stencils", &ctx.logStages[STENCILS]);CHKERRQ(ierr);
@@ -129,7 +134,6 @@ int main(int argc, char **argv) {
   levelSetFPointer domain;
   ierr = getDomainFromOptions(domain);
   ierr = setPhi(ctx,domain); CHKERRQ(ierr);
-  ierr = writePhi(ctx); CHKERRQ(ierr);
 
   //ierr = PetscLogStagePush(ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
   ierr = setNormals(ctx); CHKERRQ(ierr);
@@ -142,6 +146,8 @@ int main(int argc, char **argv) {
   //ierr = PetscLogStagePush(ctx.logStages[STENCILS]);CHKERRQ(ierr);
   ierr = setGhost(ctx); CHKERRQ(ierr);
   //ierr = PetscLogStagePop();CHKERRQ(ierr);
+
+  ierr = hdf5Output.writeDomain(ctx); CHKERRQ(ierr);
 
   ierr = DMCreateMatrix(ctx.daAll,&ctx.J);CHKERRQ(ierr);
   ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE); CHKERRQ(ierr);
@@ -215,11 +221,10 @@ int main(int argc, char **argv) {
   ierr = PetscBarrier(NULL);
 
   PetscScalar t = 0.;
-  const PetscScalar tFinal = 1.0;
   int passo=0;
   while (t<tFinal)
   {
-    if (t+ctx.dt>=tFinal)
+    if (t+ctx.dt>=tFinal-1.e-15)
       ctx.dt = (tFinal - t) + 1.e-15;
 
     ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS);CHKERRQ(ierr);

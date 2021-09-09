@@ -17,9 +17,14 @@ typedef struct{
 
 class HDF5output{
 public:
-  HDF5output(const char * _basename, AppContext &_ctx):
-    ctx(_ctx)
+  HDF5output(const char * _basename, AppContext &_ctx, PetscScalar tFinal, int nSave):
+    ctx(_ctx),
+    dtSave(tFinal/nSave),
+    nextSave(nSave>=0?0.:INFINITY)
     {strncpy(basename,_basename,250);};
+
+  //! HDF5 output of the domain (levelset and NodeTypes)
+  PetscErrorCode writeDomain(AppContext &ctx);
 
   //! HDF5 output of the solution
   //! with singleXDMF=true it will also write a XDMF for this timestep
@@ -31,8 +36,9 @@ public:
 private:
   AppContext &ctx;
   char basename[250];
+  char hdf5DomainName[256];
   std::vector<hdfTime> stepBuffer;
-
+  PetscScalar dtSave, nextSave;
   //! writes XDMF for a single timestep (the last)
   void writeLastXDMF();
 };
