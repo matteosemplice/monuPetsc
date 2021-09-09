@@ -133,6 +133,9 @@ int main(int argc, char **argv) {
 
   //ierr = PetscLogStagePush(ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
   ierr = setNormals(ctx); CHKERRQ(ierr);
+  //creaiamo qui i nodetype anziché in setGhost, per usarli in setBdrypoints
+  ierr = DMCreateGlobalVector(ctx.daField[var::s], &ctx.NODETYPE); CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(ctx.daField[var::s], &ctx.local_NodeType); CHKERRQ(ierr);
   ierr = setBoundaryPoints(ctx); CHKERRQ(ierr);
   //ierr = PetscLogStagePop();CHKERRQ(ierr);
 

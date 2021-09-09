@@ -35,7 +35,8 @@ PetscErrorCode findBoundaryPoints(
   DMDACoor3d ***coords,
   PetscScalar ***phi,
   DMDACoor3d ***N,
-  DMDACoor3d ***B);
+  DMDACoor3d ***B,
+  PetscScalar ***nodetype);
 
 PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   PetscScalar ***phi, PetscScalar ***nodetype,
@@ -136,8 +137,7 @@ PetscErrorCode setNormals(AppContext &ctx)
         N[k][j][i].y=ny_temp/module;
         N[k][j][i].z=nz_temp/module;
 
-        //PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) N=(%f,%f,%f)\n",i,j,k,N[k][j][i].x,N[k][j][i].y,N[k][j][i].z);
-
+        //PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) phi=%f N=(%f,%f,%f)\n",i,j,k,phi[k][j][i],N[k][j][i].x,N[k][j][i].y,N[k][j][i].z);
       }
 
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.local_Phi, &phi); CHKERRQ(ierr);
@@ -236,7 +236,7 @@ PetscErrorCode setBoundaryPoints(AppContext &ctx)
   PetscErrorCode ierr;
   PetscPrintf(PETSC_COMM_WORLD,"set boundary points ...\n");
 
-  PetscScalar ***phi;
+  PetscScalar ***phi,***nodetype;
   DMDACoor3d ***N, ***B, ***P;
 
   ierr = DMCreateGlobalVector(ctx.daCoord, &ctx.BOUNDARY); CHKERRQ(ierr);
@@ -246,9 +246,28 @@ PetscErrorCode setBoundaryPoints(AppContext &ctx)
   ierr = DMDAVecGetArrayRead(ctx.daCoord,ctx.coordsLocal,&P); CHKERRQ(ierr);
   ierr = DMDAVecGetArrayWrite(ctx.daCoord, ctx.BOUNDARY, &B); CHKERRQ(ierr);
 
+  ierr = DMDAVecGetArrayWrite(ctx.daField[var::s], ctx.NODETYPE, &nodetype); CHKERRQ(ierr);
+  for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
+    for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
+      for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
+        if( (i==0 && phi[k][j][i+1]<0 ) || (i==ctx.nx && phi[k][j][i-1]<0) || (j==0 && phi[k][j+1][i]<0) || (j==ctx.ny && phi[k][j-1][i]<0) || (k==0 && phi[k+1][j][i]<0) || (k==ctx.nz && phi[k-1][j][i]<0) )
+          nodetype[k][j][i]=N_GHOSTBDY; //Ghost.Bdy
+        else if(i==0 || i==ctx.nx || j==0 || j==ctx.ny || k==0 || k==ctx.nz )
+          nodetype[k][j][i]=N_INACTIVE; //inactive
+        else if(phi[k][j][i]<0)
+          nodetype[k][j][i]=N_INSIDE; //Inside
+        else if( phi[k][j][i-1]<0 || phi[k][j][i+1]<0 || phi[k][j-1][i]<0 || phi[k][j+1][i]<0 || phi[k-1][j][i]<0 || phi[k+1][j][i]<0 )
+          nodetype[k][j][i]=N_GHOSTPHI1; //Ghost.Phi1
+        else
+          nodetype[k][j][i]=N_INACTIVE; //inactive
+      }
+    }
+  }
+
   ierr = findBoundaryPoints(ctx,
                             0,//ctx.daInfo.xs,ctx.daInfo.ys,ctx.daInfo.zs,ctx.daInfo.xm,ctx.daInfo.ym,ctx.daInfo.zm,
-                            P,phi,N,B); CHKERRQ(ierr);
+                            P,phi,N,B,
+                            nodetype); CHKERRQ(ierr);
 
   ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.local_Phi, &phi); CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayRead(ctx.daCoord, ctx.NORMALS, &N); CHKERRQ(ierr);
@@ -303,7 +322,8 @@ PetscErrorCode findBoundaryPoints(
   DMDACoor3d ***coords,
   PetscScalar ***phi,
   DMDACoor3d ***N,
-  DMDACoor3d ***B)
+  DMDACoor3d ***B,
+  PetscScalar ***nodetype)
 /**************************************************************************/
 {
   PetscErrorCode ierr=0;
@@ -327,13 +347,22 @@ PetscErrorCode findBoundaryPoints(
     for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
       for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
 
+        if (nodetype[k][j][i]!=N_GHOSTPHI1){
+          B[k][j][i].x=NAN;
+          B[k][j][i].y=NAN;
+          B[k][j][i].z=NAN;
+          continue;
+        }
+
         PetscScalar R=phi[k][j][i];
         nx_temp=N[k][j][i].x, ny_temp=N[k][j][i].y, nz_temp=N[k][j][i].z;        
         PetscInt sx=SGN(-nx_temp*R),  sy=SGN(-ny_temp*R),    sz=SGN(-nz_temp*R);
 
-        //PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) N=(%f,%f,%f) R=%f s=(%d,%d,%d)\n",i,j,k,N[k][j][i].x,N[k][j][i].y,N[k][j][i].z,R,sx,sy,sz);
+        //PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) type=%d N=(%f,%f,%f) R=%f s=(%d,%d,%d)\n",i,j,k,(int) nodetype[k][j][i],N[k][j][i].x,N[k][j][i].y,N[k][j][i].z,R,sx,sy,sz);
 
         if((i<s-1 && sx<0) || (i>nn1_l-s && sx>0) || (j<s-1 && sy<0) || (j>nn2_l-s && sy>0) || (k<s-1 && sz<0) || (k>nn3_l-s && sz>0)){
+          PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) (%f,%f,%f)\n",i,j,k,sx,sy,sz);
+          PetscPrintf(PETSC_COMM_WORLD,"\n\n\n");
           SETERRQ(PETSC_COMM_SELF,1,"findBoundaryPoints cannot be run as the stencil goes outside the domain.");
           //cerr << "ERROR: findBoundaryPoints cannot be run as the stencil goes outside the domain." << endl;
           continue;
@@ -554,8 +583,6 @@ PetscErrorCode setGhost(AppContext &ctx)
         nn1_l=ctx.nnx;
         nn2_l=ctx.nny;
         nn3_l=ctx.nnz;
-        ierr = DMCreateGlobalVector(ctx.daField[var::s], &ctx.NODETYPE); CHKERRQ(ierr);
-        ierr = DMCreateLocalVector(ctx.daField[var::s], &ctx.local_NodeType); CHKERRQ(ierr);
 
         //ierr = DMGlobalToLocalBegin(ctx.daField[var::s], Phi, INSERT_VALUES, local_Phi); CHKERRQ(ierr);
         //ierr = DMGlobalToLocalEnd(ctx.daField[var::s], Phi, INSERT_VALUES, local_Phi); CHKERRQ(ierr);
