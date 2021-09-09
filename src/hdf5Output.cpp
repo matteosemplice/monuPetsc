@@ -7,6 +7,72 @@
 #include <sstream>
 #include <fstream>
 
+PetscErrorCode writePhi(AppContext &ctx){
+  PetscErrorCode ierr;
+
+  char  hdf5name[256];
+  PetscSNPrintf(hdf5name,256,"%s.h5","dominio");
+
+  PetscViewer viewer;
+  PetscPrintf(PETSC_COMM_WORLD,"Save on file %s\n",hdf5name);
+  ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,hdf5name,FILE_MODE_WRITE,&viewer); CHKERRQ(ierr);
+
+  ierr = VecView(ctx.Phi,viewer); CHKERRQ(ierr);
+
+  ierr = PetscViewerDestroy(&viewer); CHKERRQ(ierr);
+
+  std::stringstream buffer;
+
+  if (ctx.rank==0){
+    char  xdmfname[256];
+    PetscSNPrintf(xdmfname,256,"%s.xdmf","dominio");
+
+    std::ofstream xdmf;
+    xdmf.open(xdmfname,std::ios_base::out);
+
+    xdmf   << "<?xml version=\"1.0\" ?>\n";
+    xdmf   << "<Xdmf xmlns:xi=\"http://www.w3.org/2001/XInclude\" Version=\"2.0\">\n";
+    xdmf   << "<Domain>\n";
+    xdmf   << "  <Grid GridType=\"Collection\" CollectionType=\"Temporal\">\n";
+
+    buffer << "    <Grid GridType=\"Uniform\" Name=\"domain\">\n";
+    buffer << "      <Time Type=\"Single\" Value=\""<<0.<<"\" />\n";
+    switch (ctx.dim){
+    case 2:
+    buffer << "      <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << "\"/>\n";
+    buffer << "      <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.xmin << " " << ctx.ymin << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.dx   << " " << ctx.dy   << "</DataItem>\n";
+    buffer << "      </Geometry>\n";
+    break;
+    case 3:
+    buffer << "      <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\"/>\n";
+    buffer << "      <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.xmin << " " << ctx.ymin << " " << ctx.zmin << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.dx   << " " << ctx.dy   << " " << ctx.dz   << "</DataItem>\n";
+    buffer << "      </Geometry>\n";
+    buffer << "      <Attribute Name=\"Phi\" Center=\"Node\" AttributeType=\"Scalar\">\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5name<<":/Phi</DataItem>\n";
+    buffer << "      </Attribute>\n";
+    //buffer << "      <Attribute Name=\"NodeType\" Center=\"Node\" AttributeType=\"Scalar\">\n";
+    //buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5name<<":/NodeType</DataItem>\n";
+    //buffer << "      </Attribute>\n";
+    break;
+    default:
+    abort();
+    }
+    buffer << "    </Grid>\n";
+
+    xdmf   << buffer.str();
+    xdmf   << "  </Grid>\n";
+    xdmf   << "</Domain>\n";
+    xdmf   << "</Xdmf>\n";
+
+    xdmf.close();
+  }
+  return ierr;
+}
+
 PetscErrorCode HDF5output::writeHDF5(Vec U, PetscScalar time, bool singleXDMF){
   PetscErrorCode ierr;
 

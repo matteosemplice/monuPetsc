@@ -8,6 +8,8 @@
 #include <vector>
 #include <string>
 
+PetscErrorCode writePhi(AppContext &_ctx);
+
 typedef struct{
   PetscScalar t;
   std::string hdfSnippet;
