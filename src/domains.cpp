@@ -90,10 +90,10 @@ PetscErrorCode getDomainFromOptions(levelSetFPointer &domain){
     } else if (strcmp(domainName,"ellipsoid")==0){
       domain = &Phi1_ellipsoid;
       PetscPrintf(PETSC_COMM_WORLD,"Chosen ELLIPSOIDAL domain\n");
-    } else if (strcmp(domainName,"flower")==0){
+    } else if (strcmp(domainName,"smoothflower")==0){
       domain = &Phi1_flower;
       PetscPrintf(PETSC_COMM_WORLD,"Chosen SMOOTH FLOWER domain\n");
-    } else if (strcmp(domainName,"smoothflower")==0){
+    } else if (strcmp(domainName,"flower")==0){
       domain = &Phi1_smoothflower;
       PetscPrintf(PETSC_COMM_WORLD,"Chosen HARD FLOWER domain\n");
     } else if (strcmp(domainName,"cubespheres")==0){
