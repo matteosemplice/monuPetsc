@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 
   PetscScalar tFinal = 1.0;
   ierr = PetscOptionsGetScalar(NULL,NULL,"-tfin",&tFinal,NULL);CHKERRQ(ierr);
-  int nSave;
+  int nSave=20;
   ierr = PetscOptionsGetInt(NULL,NULL,"-nsave",&nSave,NULL);CHKERRQ(ierr);
 
   HDF5output hdf5Output("monumento",ctx,tFinal,nSave);
