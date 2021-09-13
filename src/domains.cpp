@@ -56,6 +56,7 @@ inline PetscScalar _cube(PetscScalar x, PetscScalar y, PetscScalar z, PetscScala
     v= std::sqrt( (ax-L/2.)*(ax-L/2.) + (ay-L/2.)*(ay-L/2.)+ (az-L/2.)*(az-L/2.));
   else
     v= std::max(ax,std::max(ay,az))-L/2.;
+  return v;
 }
 
 //inline PetscScalar _cylinder(PetscScalar x, PetscScalar y, PetscScalar z, PetscScalar x0, PetscScalar y0, PetscScalar R, PetscScalar L){
