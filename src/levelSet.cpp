@@ -95,7 +95,7 @@ PetscErrorCode setPhi(AppContext &ctx, levelSetFPointer Phi_)
     PetscPrintf(PETSC_COMM_WORLD,"Phi size %d\n",size);
     ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD, ctx.domainName, FILE_MODE_READ, &hdf5Input);CHKERRQ(ierr);
 
-    PetscObjectSetName((PetscObject) ctx.Phi, "finalLevelSet");
+    PetscObjectSetName((PetscObject) ctx.Phi, "uFinal");
     ierr = VecLoad(ctx.Phi, hdf5Input);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&hdf5Input);CHKERRQ(ierr);
   }
