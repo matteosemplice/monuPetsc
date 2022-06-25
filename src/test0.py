@@ -1,4 +1,4 @@
-#!/bin/ipython
+#!/bin/ipython3
 
 #from sympy import diff
 from sympy import * #serve per usare le varie funzioni...
@@ -7,7 +7,7 @@ from sympy.abc import x, y, z
 
 s = x*x + 2*y*y +3*z*z - cos(2*pi*z)*exp(-x*y)
 #s=z
-c = 1
+c = 1.0
 
 gamma = exp(x-y+z)
 sigma = sin(x-y+2*z)
