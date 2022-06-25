@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
 
   //load level-set function
   levelSetFPointer domain;
-  ierr = getDomainFromOptions(domain);
+  ierr = getDomainFromOptions(domain,ctx);
   ierr = setPhi(ctx,domain); CHKERRQ(ierr);
 
   //ierr = PetscLogStagePush(ctx.logStages[BOUNDARY]);CHKERRQ(ierr);

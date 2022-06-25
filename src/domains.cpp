@@ -1,4 +1,5 @@
 #include "domains.h"
+#include <fstream>
 
 PetscScalar Phi1_ellipsoid(DMDACoor3d p)
 {
@@ -77,31 +78,33 @@ PetscScalar Phi1_cubosfere(DMDACoor3d p){
   return std::min(cubo,std::min(s1,std::min(s2,s3)));
 }
 
-PetscErrorCode getDomainFromOptions(levelSetFPointer &domain){
+PetscErrorCode getDomainFromOptions(levelSetFPointer &domain, AppContext & ctx){
   PetscErrorCode ierr;
-  char domainName[255];
   PetscBool domainGiven;
-  ierr = PetscOptionsGetString(NULL,NULL,"-domain",domainName,255,&domainGiven);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,NULL,"-domain",ctx.domainName,255,&domainGiven);CHKERRQ(ierr);
 
   domain = &Phi1_sphere;
   if (domainGiven){
-    if (strcmp(domainName,"sphere")==0){
+    if (strcmp(ctx.domainName,"sphere")==0){
       domain = &Phi1_sphere;
       PetscPrintf(PETSC_COMM_WORLD,"Chosen SPHERE domain\n");
-    } else if (strcmp(domainName,"ellipsoid")==0){
+    } else if (strcmp(ctx.domainName,"ellipsoid")==0){
       domain = &Phi1_ellipsoid;
       PetscPrintf(PETSC_COMM_WORLD,"Chosen ELLIPSOIDAL domain\n");
-    } else if (strcmp(domainName,"smoothflower")==0){
+    } else if (strcmp(ctx.domainName,"smoothflower")==0){
       domain = &Phi1_flower;
       PetscPrintf(PETSC_COMM_WORLD,"Chosen SMOOTH FLOWER domain\n");
-    } else if (strcmp(domainName,"flower")==0){
+    } else if (strcmp(ctx.domainName,"flower")==0){
       domain = &Phi1_smoothflower;
       PetscPrintf(PETSC_COMM_WORLD,"Chosen HARD FLOWER domain\n");
-    } else if (strcmp(domainName,"cubespheres")==0){
+    } else if (strcmp(ctx.domainName,"cubespheres")==0){
       domain = &Phi1_cubosfere;
       PetscPrintf(PETSC_COMM_WORLD,"Chosen CUBE&SPHERES domain\n");
-    } else
-      SETERRQ(PETSC_COMM_SELF,1,"Domain name not recognized");
+    } else {
+      domain = NULL;
+      PetscPrintf(PETSC_COMM_WORLD,"Will load levelset from %s \n",ctx.domainName);
+      //SETERRQ(PETSC_COMM_SELF,1,"Domain name not recognized");
+    }
   }
   return ierr;
 }

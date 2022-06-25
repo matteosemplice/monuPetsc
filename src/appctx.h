@@ -119,6 +119,8 @@ typedef struct {
   PetscScalar theta; //theta method
   PetscScalar dt; //time step
 
+  char domainName[255];
+
   PetscLogStage logStages[4];
 } AppContext;
 

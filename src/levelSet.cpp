@@ -1,6 +1,7 @@
 #include "levelSet.h"
 
 #include <petscdmda.h>
+#include <petscviewerhdf5.h>
 #include <bitset>
 
 template <typename T>
@@ -54,36 +55,52 @@ PetscErrorCode setPhi(AppContext &ctx, levelSetFPointer Phi_)
   PetscErrorCode ierr;
   PetscPrintf(PETSC_COMM_WORLD,"%d] Setting phi values... \n",ctx.rank);
 
-  DMDACoor3d ***P;
-  ierr = DMDAVecGetArrayRead(ctx.daCoord,ctx.coordsLocal,&P); CHKERRQ(ierr);
-
-  PetscScalar ***phi;
   ierr = DMCreateGlobalVector(ctx.daField[var::s], &ctx.Phi); CHKERRQ(ierr);
+
+  if (Phi_){
+    PetscPrintf(PETSC_COMM_WORLD,"  ... from exact function\n");
+    DMDACoor3d ***P;
+    ierr = DMDAVecGetArrayRead(ctx.daCoord,ctx.coordsLocal,&P); CHKERRQ(ierr);
+
+    PetscScalar ***phi;
+    ierr = DMDAVecGetArrayWrite(ctx.daField[var::s], ctx.Phi, &phi); CHKERRQ(ierr);
+
+    for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++)
+      for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++)
+        for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++)
+          phi[k][j][i]=(*Phi_)(P[k][j][i]);
+
+    ierr = DMDAVecRestoreArrayWrite(ctx.daField[var::s],ctx.Phi,&phi); CHKERRQ(ierr);
+
+    //for(PetscInt level=0;level<levels;++level){
+        //ierr = DMCreateGlobalVector(CartesianGrid3D_p[level], &Phi_p[level]); CHKERRQ(ierr);
+        //ierr = DMCreateLocalVector(CartesianGrid3D_p[level], &local_Phi_p[level]); CHKERRQ(ierr);
+        //ierr = DMDAVecGetArrayWrite(CartesianGrid3D_p[level], Phi_p[level], &phi); CHKERRQ(ierr);
+        //ierr = DMDAGetCorners(CartesianGrid3D_p[level], &ys, &xs, &zs, &ym, &xm, &zm); CHKERRQ(ierr);
+
+    //for (PetscInt k = zs; k < zs + zm; ++k)
+        //for (PetscInt j = xs; j < xs + xm; ++j)
+            //for (PetscInt i = ys; i < ys + ym; ++i)
+                //phi[k][j][i]=Phi1_(x_p[level][j],y_p[level][i],z_p[level][k]);
+
+    //ierr = DMDAVecRestoreArrayWrite(CartesianGrid3D_p[level],Phi_p[level],&phi);                CHKERRQ(ierr);
+    //}
+
+    ierr = DMDAVecRestoreArrayRead(ctx.daCoord,ctx.coordsLocal,&P); CHKERRQ(ierr);
+  } else { //Load from file ctx.domainName
+    PetscPrintf(PETSC_COMM_WORLD,"  ... from file %s \n",ctx.domainName);
+    PetscViewer hdf5Input;
+    PetscInt size;
+    VecGetSize(ctx.Phi,&size);
+    PetscPrintf(PETSC_COMM_WORLD,"Phi size %d\n",size);
+    ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD, ctx.domainName, FILE_MODE_READ, &hdf5Input);CHKERRQ(ierr);
+
+    PetscObjectSetName((PetscObject) ctx.Phi, "finalLevelSet");
+    ierr = VecLoad(ctx.Phi, hdf5Input);CHKERRQ(ierr);
+    ierr = PetscViewerDestroy(&hdf5Input);CHKERRQ(ierr);
+  }
+
   PetscObjectSetName((PetscObject) ctx.Phi, "Phi");
-  ierr = DMDAVecGetArrayWrite(ctx.daField[var::s], ctx.Phi, &phi); CHKERRQ(ierr);
-
-  for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++)
-    for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++)
-      for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++)
-        phi[k][j][i]=(*Phi_)(P[k][j][i]);
-
-  ierr = DMDAVecRestoreArrayWrite(ctx.daField[var::s],ctx.Phi,&phi); CHKERRQ(ierr);
-
-  //for(PetscInt level=0;level<levels;++level){
-      //ierr = DMCreateGlobalVector(CartesianGrid3D_p[level], &Phi_p[level]); CHKERRQ(ierr);
-      //ierr = DMCreateLocalVector(CartesianGrid3D_p[level], &local_Phi_p[level]); CHKERRQ(ierr);
-      //ierr = DMDAVecGetArrayWrite(CartesianGrid3D_p[level], Phi_p[level], &phi); CHKERRQ(ierr);
-      //ierr = DMDAGetCorners(CartesianGrid3D_p[level], &ys, &xs, &zs, &ym, &xm, &zm); CHKERRQ(ierr);
-
-  //for (PetscInt k = zs; k < zs + zm; ++k)
-      //for (PetscInt j = xs; j < xs + xm; ++j)
-          //for (PetscInt i = ys; i < ys + ym; ++i)
-              //phi[k][j][i]=Phi1_(x_p[level][j],y_p[level][i],z_p[level][k]);
-
-  //ierr = DMDAVecRestoreArrayWrite(CartesianGrid3D_p[level],Phi_p[level],&phi);                CHKERRQ(ierr);
-  //}
-
-  ierr = DMDAVecRestoreArrayRead(ctx.daCoord,ctx.coordsLocal,&P); CHKERRQ(ierr);
 
   ierr = DMCreateLocalVector(ctx.daField[var::s], &ctx.local_Phi); CHKERRQ(ierr);
   ierr = DMGlobalToLocalBegin(ctx.daField[var::s], ctx.Phi, INSERT_VALUES, ctx.local_Phi); CHKERRQ(ierr);
@@ -144,7 +161,7 @@ PetscErrorCode setNormals(AppContext &ctx)
   ierr = DMDAVecRestoreArrayWrite(ctx.daCoord, ctx.NORMALS, &N); CHKERRQ(ierr);
 
      /////////////////////////////////////////////////////////////////////////////////////////////////
-    
+
     //VecDuplicate(Nx,&Nx_p[0]);
     //VecDuplicate(Ny,&Ny_p[0]);
     //VecDuplicate(Nz,&Nz_p[0]);
@@ -187,7 +204,7 @@ PetscErrorCode setNormals(AppContext &ctx)
         //ierr = DMDAVecGetArrayWrite(CartesianGrid3D_p[level], Ny_p[level], &ny);
         //ierr = DMDAVecGetArrayWrite(CartesianGrid3D_p[level], Nz_p[level], &nz);
         //ierr = DMDAGetCorners(CartesianGrid3D_p[level], &ys, &xs, &zs, &ym, &xm, &zm);
-    
+
         //PetscInt nn1_l = (nn1-1)/pow(2,level)+1;
         //PetscInt nn2_l = (nn2-1)/pow(2,level)+1;
         //PetscInt nn3_l = (nn3-1)/pow(2,level)+1;
@@ -355,7 +372,7 @@ PetscErrorCode findBoundaryPoints(
         }
 
         PetscScalar R=phi[k][j][i];
-        nx_temp=N[k][j][i].x, ny_temp=N[k][j][i].y, nz_temp=N[k][j][i].z;        
+        nx_temp=N[k][j][i].x, ny_temp=N[k][j][i].y, nz_temp=N[k][j][i].z;
         PetscInt sx=SGN(-nx_temp*R),  sy=SGN(-ny_temp*R),    sz=SGN(-nz_temp*R);
 
         //PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) type=%d N=(%f,%f,%f) R=%f s=(%d,%d,%d)\n",i,j,k,(int) nodetype[k][j][i],N[k][j][i].x,N[k][j][i].y,N[k][j][i].z,R,sx,sy,sz);
@@ -568,12 +585,12 @@ PetscErrorCode setGhost(AppContext &ctx)
          nxb, nyb, nzb;
   ghost current;
   ghost_Bdy current_Bdy;
-    
+
   PetscScalar ***phi;
   DMDACoor3d ***B, ***P;
   PetscScalar ***nodetype;
-    
-  for(PetscInt level=-1;level<ctx.mgLevels;++level){ //level=-1 means that we create objects for the fine grid without using vectors of grids 
+
+  for(PetscInt level=-1;level<ctx.mgLevels;++level){ //level=-1 means that we create objects for the fine grid without using vectors of grids
     PetscInt level_temp;
     PetscInt nn1_l=(ctx.nx)/pow(2,level)+1;
     PetscInt nn2_l=(ctx.ny)/pow(2,level)+1;
@@ -600,7 +617,7 @@ PetscErrorCode setGhost(AppContext &ctx)
         //ierr = DMCreateLocalVector(CartesianGrid3D_p[level], &local_NodeType_p[level]);
 
         //ierr = DMGlobalToLocalBegin(CartesianGrid3D_p[level], Phi_p[level], INSERT_VALUES, local_Phi_p[level]);
-        //ierr = DMGlobalToLocalEnd(CartesianGrid3D_p[level], Phi_p[level], INSERT_VALUES, local_Phi_p[level]);       
+        //ierr = DMGlobalToLocalEnd(CartesianGrid3D_p[level], Phi_p[level], INSERT_VALUES, local_Phi_p[level]);
         //ierr = DMDAVecGetArrayRead(CartesianGrid3D_p[level], local_Phi_p[level], &phi);
         //ierr = DMDAVecGetArrayRead(CartesianGrid3D_p[level], Xb_p[level], &xb);
         //ierr = DMDAVecGetArrayRead(CartesianGrid3D_p[level], Yb_p[level], &yb);
@@ -621,7 +638,7 @@ PetscErrorCode setGhost(AppContext &ctx)
             nodetype[k][j][i]=N_INSIDE; //Inside
           else if( phi[k][j][i-1]<0 || phi[k][j][i+1]<0 || phi[k][j-1][i]<0 || phi[k][j+1][i]<0 || phi[k-1][j][i]<0 || phi[k+1][j][i]<0 )
             nodetype[k][j][i]=N_GHOSTPHI1; //Ghost.Phi1
-          else 
+          else
             nodetype[k][j][i]=N_INACTIVE; //inactive
         }
       }
@@ -670,8 +687,8 @@ PetscErrorCode setGhost(AppContext &ctx)
               current.coeffs_dy[cont]=coeffs_dy[cont];
               current.coeffs_dz[cont]=coeffs_dz[cont];
               }
-            current.dtau=0.9;   
-            if(level==-1){ 
+            current.dtau=0.9;
+            if(level==-1){
               ctx.Ghost.Phi1.push_back(current);
               nodetype[k][j][i]=(ctx.Ghost.Phi1.size())-1;
             }
@@ -704,8 +721,8 @@ PetscErrorCode setGhost(AppContext &ctx)
             current_Bdy.coeffsN[0]=k2*3./2./ctx.dx+(1-k2)*1./ctx.dx;
             current_Bdy.coeffsN[1]=k2*(-4.)/2./ctx.dx+(1-k2)*(-1.)/ctx.dx;
             current_Bdy.coeffsN[2]=k2*1./2./ctx.dx+(1-k2)*0./ctx.dx;
-            current.dtau=0.9; 
-            if(level==-1){ 
+            current.dtau=0.9;
+            if(level==-1){
               ctx.Ghost.Bdy.push_back(current_Bdy);
               nodetype[k][j][i]=(ctx.Ghost.Bdy.size())-1+ctx.nn123;
             }
@@ -719,7 +736,7 @@ PetscErrorCode setGhost(AppContext &ctx)
       }
     }
 
-    if(level==-1){ 
+    if(level==-1){
       ierr = DMDAVecRestoreArrayWrite(ctx.daField[var::s], ctx.local_NodeType, &nodetype); CHKERRQ(ierr);
       ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.local_Phi, &phi); CHKERRQ(ierr);
       ierr = DMDAVecRestoreArrayRead(ctx.daCoord, ctx.coordsLocal, &P); CHKERRQ(ierr);
@@ -822,7 +839,7 @@ PetscErrorCode setGhostStencil(AppContext & ctx, PetscInt kg,
   int kg1=stencil[0];
   int i1,j1,k1;
   nGlob2IJK(ctx,kg1,i1,j1,k1);
-  
+
   double xG1=P[k1][j1][i1].x; double yG1=P[k1][j1][i1].y;  double zG1=P[k1][j1][i1].z;
   double thtx=fabs(xC-xG1)/2/dx;
   double thty=fabs(yC-yG1)/2/dy;
