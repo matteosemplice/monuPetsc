@@ -88,14 +88,24 @@ PetscErrorCode setPhi(AppContext &ctx, levelSetFPointer Phi_)
 
     ierr = DMDAVecRestoreArrayRead(ctx.daCoord,ctx.coordsLocal,&P); CHKERRQ(ierr);
   } else { //Load from file ctx.domainName
-    PetscPrintf(PETSC_COMM_WORLD,"  ... from file %s \n",ctx.domainName);
+    PetscPrintf(PETSC_COMM_WORLD,"  ... from file %s ",ctx.domainName);
     PetscViewer hdf5Input;
     PetscInt size;
     VecGetSize(ctx.Phi,&size);
-    PetscPrintf(PETSC_COMM_WORLD,"Phi size %d\n",size);
+    PetscPrintf(PETSC_COMM_WORLD," (expected Phi size is %d) ",size);
     ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD, ctx.domainName, FILE_MODE_READ, &hdf5Input);CHKERRQ(ierr);
 
-    PetscObjectSetName((PetscObject) ctx.Phi, "uFinal");
+    PetscBool phiNameGiven;
+    char phiName[255];
+    ierr = PetscOptionsGetString(NULL,NULL,"-phiName",phiName,255,&phiNameGiven);CHKERRQ(ierr);
+
+    if (phiNameGiven){
+      PetscObjectSetName((PetscObject) ctx.Phi, phiName);
+      PetscPrintf(PETSC_COMM_WORLD," ... using field %s\n",phiName);
+    } else {
+      PetscObjectSetName((PetscObject) ctx.Phi, "uFinal");
+      PetscPrintf(PETSC_COMM_WORLD," ... using field uFinal\n",phiName);
+    }
     ierr = VecLoad(ctx.Phi, hdf5Input);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&hdf5Input);CHKERRQ(ierr);
     
