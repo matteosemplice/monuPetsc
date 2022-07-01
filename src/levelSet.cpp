@@ -98,6 +98,13 @@ PetscErrorCode setPhi(AppContext &ctx, levelSetFPointer Phi_)
     PetscObjectSetName((PetscObject) ctx.Phi, "uFinal");
     ierr = VecLoad(ctx.Phi, hdf5Input);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&hdf5Input);CHKERRQ(ierr);
+    
+    PetscBool phiChangeSign = PETSC_FALSE;
+    ierr = PetscOptionsGetBool(NULL,NULL,"-phiChangeSign",&phiChangeSign,NULL);CHKERRQ(ierr);
+    if (phiChangeSign){
+      PetscPrintf(PETSC_COMM_WORLD,"Swapping sign of loaded levelset\n",size);
+      ierr = VecScale(ctx.Phi,-1.0); CHKERRQ(ierr);
+    }
   }
 
   PetscObjectSetName((PetscObject) ctx.Phi, "Phi");
