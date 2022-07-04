@@ -86,7 +86,9 @@ int main(int argc, char **argv) {
 
   PetscPrintf(PETSC_COMM_WORLD,"Grid of %dX%dX%d cells.\n",ctx.nx,ctx.ny,ctx.nz);
 
-  ierr = PetscOptionsGetInt(NULL,NULL,"-mglevels",&ctx.mgLevels,NULL);CHKERRQ(ierr);
+  PetscInt app=ctx.mgLevels;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mglevels",&app,NULL);CHKERRQ(ierr);
+  ctx.mgLevels = int(app);
   if (ctx.mgLevels>0)
     ctx.solver=1;
   else {
@@ -97,7 +99,9 @@ int main(int argc, char **argv) {
   PetscScalar tFinal = 1.0;
   ierr = PetscOptionsGetScalar(NULL,NULL,"-tfin",&tFinal,NULL);CHKERRQ(ierr);
   int nSave=20;
-  ierr = PetscOptionsGetInt(NULL,NULL,"-nsave",&nSave,NULL);CHKERRQ(ierr);
+  app=nSave;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-nsave",&app,NULL);CHKERRQ(ierr);
+  nSave = int(app);
 
   HDF5output hdf5Output("monumento",ctx,tFinal,nSave);
 

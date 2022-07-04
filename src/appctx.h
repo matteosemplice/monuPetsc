@@ -83,7 +83,7 @@ typedef struct {
   PetscInt nnx,nny,nnz,nn123; //no. of points in DMDA
   PetscScalar xmin, xmax, ymin, ymax, zmin, zmax; //domain bounding box
   PetscScalar dx,dy,dz; //cell size
-  PetscInt rank, size;  //rank of processor
+  int rank, size;  //rank of processor
   DM daAll;       //global DA
   DMDALocalInfo daInfo;//, daInfoC, daInfoS;
   IS *is;
@@ -104,7 +104,7 @@ typedef struct {
     //multigrid-levels = 0 ==> the solver is ksp with matrix-free set in setMatrixShell()
     //multigrid-levels = -1 ==> the solver is ksp with matrix set on 3D DMDA in setMatrix()
     //multigrid-levels = -2 ==> the solver is ksp with matrix set in a LEX order grid in setMatrixSEQ() (WARNING: it does not work with more than 1 proc)
-  int mgLevels;
+  int mgLevels=-1;
   int solver;
   Phi12Bdy_struct<ghost,ghost_Bdy> Ghost;
 
