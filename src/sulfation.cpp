@@ -354,8 +354,6 @@ PetscErrorCode setInitialData(AppContext &ctx, Vec U0){
 
   ierr = DMDAVecGetArrayDOF(ctx.daAll, U0, &u);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
-  
-  ierr = PetscOptionsGetScalar(NULL,NULL,"-sExt",&(ctx.pb.sExt),NULL);CHKERRQ(ierr);
 
   for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++)
     for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++)
