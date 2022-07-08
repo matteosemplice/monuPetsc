@@ -33,6 +33,17 @@ public:
   //! writes XDMF for the entire simulation
   void writeSimulationXDMF();
 
+  void skipNSave(PetscInt nSkip) {
+    hdfTime tStep;
+    for (PetscInt i=0; i<nSkip; ++i){
+      tStep.t = nextSave;
+      tStep.hdfSnippet = "SKIPPED";
+      stepBuffer.push_back(tStep);
+      nextSave += dtSave; 
+    }
+    PetscPrintf(PETSC_COMM_WORLD,"Next save point (%d) set at %f\n",stepBuffer.size(),nextSave);
+  }
+
 private:
   AppContext &ctx;
   char basename[250];

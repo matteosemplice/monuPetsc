@@ -44,7 +44,7 @@ typedef struct ghost_Bdy {
      double zc;
      double xb;
      double yb;
-     double zb;     
+     double zb;
      int type;
      int stencil[3];
      double coeffsD[3];
@@ -118,6 +118,8 @@ typedef struct {
   sulfationProblem pb;
   PetscScalar theta; //theta method
   PetscScalar dt; //time step
+  PetscScalar tLoad=0.; //time step
+  PetscInt nLoad=0; //time step
 
   char domainName[255];
 

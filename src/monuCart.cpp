@@ -213,7 +213,6 @@ int main(int argc, char **argv) {
 
   //Initial data
   ierr = setInitialData(ctx, ctx.U0); CHKERRQ(ierr);
-  ierr = hdf5Output.writeHDF5(ctx.U0, 0.,true);
 
   //Perform mallocs in ctx.J...
   // THIS IS A BAD TRICK!
@@ -224,8 +223,14 @@ int main(int argc, char **argv) {
   ierr = MatSetOption(ctx.J,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_TRUE); CHKERRQ(ierr);
   ierr = PetscBarrier(NULL);
 
-  PetscScalar t = 0.;
-  int passo=0;
+  PetscScalar t = ctx.tLoad;
+  int passo = ctx.nLoad;
+  if (ctx.nLoad==0){
+    ierr = hdf5Output.writeHDF5(ctx.U0, 0.,true);
+  } else {
+    hdf5Output.skipNSave(ctx.nLoad);
+  }
+
   while (t<tFinal)
   {
     if (t+ctx.dt>=tFinal-1.e-15)
