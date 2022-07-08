@@ -228,7 +228,7 @@ int main(int argc, char **argv) {
   if (ctx.nLoad==0){
     ierr = hdf5Output.writeHDF5(ctx.U0, 0.,true);
   } else {
-    hdf5Output.skipNSave(ctx.nLoad);
+    hdf5Output.skipNSave(ctx.nLoad+1);
   }
 
   while (t<tFinal)
