@@ -347,7 +347,7 @@ PetscErrorCode computePorosity(AppContext &ctx, Vec Uloc,Vec POROSloc){
   return ierr;
 }
 
-PetscErrorCode loadInitialData(AppContext &ctx, Vec U0){
+PetscErrorCode loadInitialData(AppContext &ctx, Vec &U0){
   PetscErrorCode ierr;
 
   char  hdf5name[256];
@@ -377,7 +377,7 @@ PetscErrorCode loadInitialData(AppContext &ctx, Vec U0){
   return ierr;
 }
 
-PetscErrorCode setInitialData(AppContext &ctx, Vec U0){
+PetscErrorCode setInitialData(AppContext &ctx, Vec &U0){
   PetscErrorCode ierr;
   PetscScalar ****u;
   PetscScalar *** nodetype;
