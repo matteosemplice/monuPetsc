@@ -5,7 +5,7 @@
 
 #include <petscsnes.h>
 
-PetscErrorCode setInitialData(AppContext &ctx, Vec U0);
+PetscErrorCode setInitialData(AppContext &ctx, Vec &U0);
 
 PetscErrorCode computePorosity(AppContext &ctx, Vec U,Vec POROSloc);
 PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx);
