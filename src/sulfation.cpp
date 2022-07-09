@@ -362,14 +362,14 @@ PetscErrorCode loadInitialData(AppContext &ctx, Vec &U0){
   ierr = DMGetGlobalVector(ctx.daField[var::s], &uField); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "S");
   ierr = VecLoad(uField,viewer); CHKERRQ(ierr);
-  ierr = VecStrideScatter(U0,var::s,uField,INSERT_VALUES); CHKERRQ(ierr);
-  ierr = DMRestoreGlobalVector(ctx.daField[var::s], &uField); CHKERRQ(ierr);
+  ierr = VecStrideScatter(uField,var::s,U0,INSERT_VALUES); CHKERRQ(ierr);
+  //ierr = DMRestoreGlobalVector(ctx.daField[var::s], &uField); CHKERRQ(ierr);
 
   //c
-  ierr = DMGetGlobalVector(ctx.daField[var::c], &uField); CHKERRQ(ierr);
+  //ierr = DMGetGlobalVector(ctx.daField[var::c], &uField); CHKERRQ(ierr);
   PetscObjectSetName((PetscObject) uField, "C");
   ierr = VecLoad(uField,viewer); CHKERRQ(ierr);
-  ierr = VecStrideScatter(U0,var::c,uField,INSERT_VALUES); CHKERRQ(ierr);
+  ierr = VecStrideScatter(uField,var::c,U0,INSERT_VALUES); CHKERRQ(ierr);
   ierr = DMRestoreGlobalVector(ctx.daField[var::c], &uField); CHKERRQ(ierr);
 
   ierr = PetscViewerDestroy(&viewer); CHKERRQ(ierr);
@@ -387,7 +387,7 @@ PetscErrorCode setInitialData(AppContext &ctx, Vec &U0){
   ierr = PetscOptionsGetInt   (NULL,NULL,"-nload",&ctx.nLoad,&nLoadGiven);CHKERRQ(ierr);
   if (nLoadGiven){
     if (tLoadGiven){
-      loadInitialData(ctx,U0);
+      ierr = loadInitialData(ctx,U0);CHKERRQ(ierr);
       return ierr;
     } else {
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER_INPUT,"Options -tload and -nload MUST be used together");
