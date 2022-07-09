@@ -235,7 +235,15 @@ int main(int argc, char **argv) {
 
     ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
     //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
+    PetscLogDouble timeStart, timeEnd;
+    ierr=PetscTime(&timeStart);CHKERRQ(ierr);
     ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
+    ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
+    timeEnd-=timeStart;
+    MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MIN, 0, PETSC_COMM_WORLD);
+    PetscPrintf(PETSC_COMM_WORLD," step completed in (%f - ",timeStart);
+    MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MAX, 0, PETSC_COMM_WORLD);
+    PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
     //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
     passo++;

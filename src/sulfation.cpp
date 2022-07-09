@@ -15,9 +15,9 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
   AppContext * ctx_p = (AppContext *) _ctx;
   AppContext &ctx = *ctx_p;
 
-  PetscPrintf(PETSC_COMM_WORLD,"Computing F\n");
-  //PetscLogDouble timeStart, timeEnd;
-  //ierr=PetscTime(&timeStart);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"Computing F ...");
+  PetscLogDouble timeStart, timeEnd;
+  ierr=PetscTime(&timeStart);CHKERRQ(ierr);
   //contaF++;
   //if (contaF%100==0)
     //PetscPrintf(PETSC_COMM_WORLD,"Computing F: %d\n",contaF);
@@ -73,8 +73,27 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, ctx.Uloc, &u);CHKERRQ(ierr);
   ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, F, &f);CHKERRQ(ierr);
 
-  //ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
+  ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
   //PetscPrintf(PETSC_COMM_SELF,"%d] Computing F done (%f s).\n",ctx.rank,timeEnd-timeStart);
+  timeEnd-=timeStart;
+  MPI_Reduce(
+    (void *) &timeEnd,
+    (void *) &timeStart,
+    1,
+    MPI_DOUBLE,
+    MPI_MIN,
+    0,
+    PETSC_COMM_WORLD);
+  PetscPrintf(PETSC_COMM_WORLD," done in (%f - ",ctx.rank,timeStart);
+  MPI_Reduce(
+    (void *) &timeEnd,
+    (void *) &timeStart,
+    1,
+    MPI_DOUBLE,
+    MPI_MAX,
+    0,
+    PETSC_COMM_WORLD);
+  PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
 
   return ierr;
 }
@@ -180,7 +199,7 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
     (void *) &timeStart,
     1,
     MPI_DOUBLE,
-    MPI_MAX,
+    MPI_MIN,
     0,
     PETSC_COMM_WORLD);
   PetscPrintf(PETSC_COMM_WORLD," done in (%f - ",ctx.rank,timeStart);
@@ -189,7 +208,7 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
     (void *) &timeStart,
     1,
     MPI_DOUBLE,
-    MPI_MIN,
+    MPI_MAX,
     0,
     PETSC_COMM_WORLD);
   PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
