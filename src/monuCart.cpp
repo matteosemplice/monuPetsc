@@ -103,7 +103,10 @@ int main(int argc, char **argv) {
   ierr = PetscOptionsGetInt(NULL,NULL,"-nsave",&app,NULL);CHKERRQ(ierr);
   nSave = int(app);
 
+  ierr = PetscOptionsGetScalar(NULL,NULL,"-reacA",&(ctx.pb.a),NULL);CHKERRQ(ierr);
+
   HDF5output hdf5Output("monumento",ctx,tFinal,nSave);
+  PetscPrintf(PETSC_COMM_WORLD,"Reaction speed %f.\n",ctx.pb.a);
 
   //ierr = PetscLogStageRegister("Boundary", &ctx.logStages[BOUNDARY]);CHKERRQ(ierr);
   //ierr = PetscLogStageRegister("Stencils", &ctx.logStages[STENCILS]);CHKERRQ(ierr);
