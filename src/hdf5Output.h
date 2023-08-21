@@ -41,7 +41,7 @@ public:
       stepBuffer.push_back(tStep);
       nextSave += dtSave;
     }
-    PetscPrintf(PETSC_COMM_WORLD,"Next save point (%d) set at %f\n",stepBuffer.size(),nextSave);
+    PetscPrintf(PETSC_COMM_WORLD,"Next save point (%ld) set at %f\n",stepBuffer.size(),nextSave);
   }
 
 private:

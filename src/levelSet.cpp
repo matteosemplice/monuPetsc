@@ -104,7 +104,7 @@ PetscErrorCode setPhi(AppContext &ctx, levelSetFPointer Phi_)
       PetscPrintf(PETSC_COMM_WORLD," ... using field %s\n",phiName);
     } else {
       PetscObjectSetName((PetscObject) ctx.Phi, "uFinal");
-      PetscPrintf(PETSC_COMM_WORLD," ... using field uFinal\n",phiName);
+      PetscPrintf(PETSC_COMM_WORLD," ... using field uFinal\n");
     }
     ierr = VecLoad(ctx.Phi, hdf5Input);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&hdf5Input);CHKERRQ(ierr);
@@ -112,7 +112,7 @@ PetscErrorCode setPhi(AppContext &ctx, levelSetFPointer Phi_)
     PetscBool phiChangeSign = PETSC_FALSE;
     ierr = PetscOptionsGetBool(NULL,NULL,"-phiChangeSign",&phiChangeSign,NULL);CHKERRQ(ierr);
     if (phiChangeSign){
-      PetscPrintf(PETSC_COMM_WORLD,"Swapping sign of loaded levelset\n",size);
+      PetscPrintf(PETSC_COMM_WORLD,"Swapping sign of loaded levelset\n");
       ierr = VecScale(ctx.Phi,-1.0); CHKERRQ(ierr);
     }
   }
@@ -395,7 +395,7 @@ PetscErrorCode findBoundaryPoints(
         //PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) type=%d N=(%f,%f,%f) R=%f s=(%d,%d,%d)\n",i,j,k,(int) nodetype[k][j][i],N[k][j][i].x,N[k][j][i].y,N[k][j][i].z,R,sx,sy,sz);
 
         if((i<s-1 && sx<0) || (i>nn1_l-s && sx>0) || (j<s-1 && sy<0) || (j>nn2_l-s && sy>0) || (k<s-1 && sz<0) || (k>nn3_l-s && sz>0)){
-          PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) (%f,%f,%f)\n",i,j,k,sx,sy,sz);
+          PetscPrintf(PETSC_COMM_WORLD,"(%d,%d,%d) (%d,%d,%d)\n",i,j,k,sx,sy,sz);
           PetscPrintf(PETSC_COMM_WORLD,"\n\n\n");
           SETERRQ(PETSC_COMM_SELF,1,"findBoundaryPoints cannot be run as the stencil goes outside the domain.");
           //cerr << "ERROR: findBoundaryPoints cannot be run as the stencil goes outside the domain." << endl;
@@ -533,7 +533,7 @@ void scriviListaPunti(std::vector<shiftedStencil> lista, const char * basename, 
   fprintf(file, "<VTKFile type=\"UnstructuredGrid\" byte_order=\"LittleEndian\">\n");
 
   fprintf(file, "<UnstructuredGrid>\n");
-  fprintf(file, "  <Piece  NumberOfPoints=\"%d\" NumberOfCells=\"0\">\n",
+  fprintf(file, "  <Piece  NumberOfPoints=\"%ld\" NumberOfCells=\"0\">\n",
                 lista.size());
   fprintf(file, "    <PointData Scalars=\"nShifts\"> \n");
   fprintf(file, "      <DataArray type=\"UInt8\" Name=\"nShifts\">\n        ");

@@ -42,7 +42,7 @@ PetscScalar Phi1_flower(DMDACoor3d p){
 }
 
 PetscScalar Phi1_smoothflower(DMDACoor3d p){
-  DMDACoor3d n={1./sqrt(3.),1./sqrt(3.),1./sqrt(3.)};
+  //DMDACoor3d n={1./sqrt(3.),1./sqrt(3.),1./sqrt(3.)};
   DMDACoor3d q=p;//rotate(p,n,M_PI_4);
 //  q.x+=0.01;
   return _flower(q.x,q.y,q.z,0.5);

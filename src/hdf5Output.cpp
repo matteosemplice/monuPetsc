@@ -80,7 +80,7 @@ PetscErrorCode HDF5output::writeHDF5(Vec U, PetscScalar time, bool singleXDMF){
     return 0;
 
   char  hdf5name[256];
-  PetscSNPrintf(hdf5name,256,"%s_%d.h5",basename,stepBuffer.size());
+  PetscSNPrintf(hdf5name,256,"%s_%ld.h5",basename,stepBuffer.size());
 
   PetscViewer viewer;
   PetscPrintf(PETSC_COMM_WORLD,"Save on file %s\n",hdf5name);
@@ -171,7 +171,7 @@ void HDF5output::writeLastXDMF(){
 
   if (ctx.rank==0){
     char  xdmfname[256];
-    PetscSNPrintf(xdmfname,256,"%s_%d.xdmf",basename,stepBuffer.size()-1);
+    PetscSNPrintf(xdmfname,256,"%s_%ld.xdmf",basename,stepBuffer.size()-1);
 
     std::ofstream xdmf;
     xdmf.open(xdmfname,std::ios_base::out);

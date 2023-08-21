@@ -84,7 +84,7 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
     MPI_MIN,
     0,
     PETSC_COMM_WORLD);
-  PetscPrintf(PETSC_COMM_WORLD," done in (%f - ",ctx.rank,timeStart);
+  PetscPrintf(PETSC_COMM_WORLD," done in (%d - ",ctx.rank);
   MPI_Reduce(
     (void *) &timeEnd,
     (void *) &timeStart,
@@ -202,7 +202,7 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
     MPI_MIN,
     0,
     PETSC_COMM_WORLD);
-  PetscPrintf(PETSC_COMM_WORLD," done in (%f - ",ctx.rank,timeStart);
+  PetscPrintf(PETSC_COMM_WORLD," done in (%d - ",ctx.rank);
   MPI_Reduce(
     (void *) &timeEnd,
     (void *) &timeStart,

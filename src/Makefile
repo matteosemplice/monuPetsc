@@ -3,15 +3,15 @@
 # or in the PetscDef.make file
 include PetscDef.make
 
-CXXFLAGS         = -g
+include ${PETSC_DIR}/lib/petsc/conf/variables
+include ${PETSC_DIR}/lib/petsc/conf/rules
+
+CXXPPFLAGS         = -g -O ${EIGEN_INCL}
 
 # defines: passed to compiler on command-line
 DEFS =
 # NDEBUG         : turns off assert and extra debugging code
 #DEFS += -D NDEBUG
-
-include ${PETSC_DIR}/lib/petsc/conf/variables
-include ${PETSC_DIR}/lib/petsc/conf/rules
 
 EXE=monuCart
 MAIN=monuCart.cpp
