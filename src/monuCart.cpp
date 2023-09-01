@@ -84,7 +84,8 @@ int main(int argc, char **argv) {
   ctx.dy = (ctx.ymax-ctx.ymin) / (ctx.ny);
   ctx.dz = (ctx.zmax-ctx.zmin) / (ctx.nz);
 
-  PetscPrintf(PETSC_COMM_WORLD,"Grid of %dX%dX%d cells.\n",ctx.nx,ctx.ny,ctx.nz);
+  PetscPrintf(PETSC_COMM_WORLD,"Grid of %dX%dX%d cells,\n",ctx.nx,ctx.ny,ctx.nz);
+  PetscPrintf(PETSC_COMM_WORLD,"with cells of %fX%fX%f.\n",ctx.dx,ctx.dy,ctx.dz);
 
   PetscInt app=ctx.mgLevels;
   ierr = PetscOptionsGetInt(NULL,NULL,"-mglevels",&app,NULL);CHKERRQ(ierr);
@@ -214,6 +215,13 @@ int main(int argc, char **argv) {
   ctx.dt   =cfl * ctx.dx;
   ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
+  PetscBool firstWithIE = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,NULL,"-firstIE",&firstWithIE,NULL);CHKERRQ(ierr);
+  if (firstWithIE){
+    PetscPrintf(PETSC_COMM_WORLD,"Using IE for the first timestep\n");
+    ctx.theta=0.; //set to 0 for Implicit Euler
+  }
+
   //Initial data
   ierr = setInitialData(ctx, ctx.U0); CHKERRQ(ierr);
 
@@ -261,6 +269,12 @@ int main(int argc, char **argv) {
     ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
     PetscPrintf(PETSC_COMM_WORLD,"****** t=%f, still %g to go *****\n",t,std::max(tFinal-t,0.));
     ctx.dt = cfl*ctx.dx;
+
+    if (firstWithIE){
+      if (passo==1)
+        PetscPrintf(PETSC_COMM_WORLD,"Switching to Crank-Nicholson\n");
+      ctx.theta=0.5; //set to 0 for Implicit Euler
+    }
   }
 
   hdf5Output.writeSimulationXDMF();
