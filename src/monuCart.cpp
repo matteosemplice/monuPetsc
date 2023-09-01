@@ -230,6 +230,7 @@ int main(int argc, char **argv) {
   int passo = ctx.nLoad;
   if (ctx.nLoad==0){
     ierr = hdf5Output.writeHDF5(ctx.U0, 0.,true);
+    hdf5Output.setNextSave(0.);
   } else {
     hdf5Output.skipNSave(ctx.nLoad+1);
   }
