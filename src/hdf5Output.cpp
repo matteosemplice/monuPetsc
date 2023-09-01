@@ -39,23 +39,23 @@ PetscErrorCode HDF5output::writeDomain(AppContext &ctx){
     buffer << "      <Time Type=\"Single\" Value=\""<<0.<<"\" />\n";
     switch (ctx.dim){
     case 2:
-    buffer << "      <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << "\"/>\n";
+    buffer << "      <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << ctx.nny << " " << ctx.nnx << "\"/>\n";
     buffer << "      <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
-    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.xmin << " " << ctx.ymin << "</DataItem>\n";
-    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.dx   << " " << ctx.dy   << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.ymin << " " << ctx.xmin << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.dy   << " " << ctx.dx   << "</DataItem>\n";
     buffer << "      </Geometry>\n";
     break;
     case 3:
-    buffer << "      <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\"/>\n";
+    buffer << "      <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << ctx.nnz << " " << ctx.nny << " " << ctx.nnx << "\"/>\n";
     buffer << "      <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
-    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.xmin << " " << ctx.ymin << " " << ctx.zmin << "</DataItem>\n";
-    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.dx   << " " << ctx.dy   << " " << ctx.dz   << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.zmin << " " << ctx.ymin << " " << ctx.xmin << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.dz   << " " << ctx.dy   << " " << ctx.dx   << "</DataItem>\n";
     buffer << "      </Geometry>\n";
     buffer << "      <Attribute Name=\"Phi\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5DomainName<<":/Phi</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnz << " " << ctx.nny << " " << ctx.nnx << "\">"<<hdf5DomainName<<":/Phi</DataItem>\n";
     buffer << "      </Attribute>\n";
     buffer << "      <Attribute Name=\"NodeType\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5DomainName<<":/NodeType</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnx << "\">"<<hdf5DomainName<<":/NodeType</DataItem>\n";
     buffer << "      </Attribute>\n";
     break;
     default:
@@ -117,33 +117,33 @@ PetscErrorCode HDF5output::writeHDF5(Vec U, PetscScalar time, bool singleXDMF){
     case 2:
     buffer << "      <Topology TopologyType=\"2DCoRectMesh\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << "\"/>\n";
     buffer << "      <Geometry GeometryType=\"ORIGIN_DXDY\">\n";
-    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.xmin << " " << ctx.ymin << "</DataItem>\n";
-    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.dx   << " " << ctx.dy   << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.ymin << " " << ctx.xmin << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"2\">" << ctx.dy   << " " << ctx.dx   << "</DataItem>\n";
     buffer << "      </Geometry>\n";
     buffer << "      <Attribute Name=\"SO2\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << "\">"<<hdf5name<<":/S</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nny << " " << ctx.nnx << "\">"<<hdf5name<<":/S</DataItem>\n";
     buffer << "      </Attribute>\n";
     buffer << "      <Attribute Name=\"CaCO3\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << "\">"<<hdf5name<<":/C</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nny << " " << ctx.nnx << "\">"<<hdf5name<<":/C</DataItem>\n";
     buffer << "      </Attribute>\n";
     break;
     case 3:
-    buffer << "      <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\"/>\n";
+    buffer << "      <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"" << ctx.nnz << " " << ctx.nny << " " << ctx.nnz << "\"/>\n";
     buffer << "      <Geometry GeometryType=\"ORIGIN_DXDYDZ\">\n";
-    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.xmin << " " << ctx.ymin << " " << ctx.zmin << "</DataItem>\n";
-    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.dx   << " " << ctx.dy   << " " << ctx.dz   << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.zmin << " " << ctx.ymin << " " << ctx.xmin << "</DataItem>\n";
+    buffer << "        <DataItem Format=\"XML\" NumberType=\"Float\" Dimensions=\"3\">" << ctx.dz   << " " << ctx.dy   << " " << ctx.dx   << "</DataItem>\n";
     buffer << "      </Geometry>\n";
     buffer << "      <Attribute Name=\"SO2\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5name<<":/S</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnz << " " << ctx.nny << " " << ctx.nnx << "\">"<<hdf5name<<":/S</DataItem>\n";
     buffer << "      </Attribute>\n";
     buffer << "      <Attribute Name=\"CaCO3\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5name<<":/C</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnz << " " << ctx.nny << " " << ctx.nnx << "\">"<<hdf5name<<":/C</DataItem>\n";
     buffer << "      </Attribute>\n";
     buffer << "      <Attribute Name=\"Phi\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5DomainName<<":/Phi</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnz << " " << ctx.nny << " " << ctx.nnx << "\">"<<hdf5DomainName<<":/Phi</DataItem>\n";
     buffer << "      </Attribute>\n";
     buffer << "      <Attribute Name=\"NodeType\" Center=\"Node\" AttributeType=\"Scalar\">\n";
-    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnx << " " << ctx.nny << " " << ctx.nnz << "\">"<<hdf5DomainName<<":/NodeType</DataItem>\n";
+    buffer << "        <DataItem Format=\"HDF\" Dimensions=\"" << ctx.nnz << " " << ctx.nny << " " << ctx.nnx << "\">"<<hdf5DomainName<<":/NodeType</DataItem>\n";
     buffer << "      </Attribute>\n";
     break;
     default:
