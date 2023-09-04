@@ -211,8 +211,12 @@ int main(int argc, char **argv) {
   //ierr = WriteHDF5(ctx, "errore", ctx.U0); CHKERRQ(ierr);
 
   ////Use Crank-Nicolson
-  const PetscScalar cfl=0.05;
-  ctx.dt   =cfl * ctx.dx;
+  PetscScalar cfl=0.05;
+  ierr = PetscOptionsGetScalar(NULL,NULL,"-cfl",&cfl,NULL);CHKERRQ(ierr);
+  ctx.dt = cfl * ctx.dx;
+  PetscScalar cflMin = 1./ctx.pb.a;
+  ierr = PetscOptionsGetScalar(NULL,NULL,"-cflMin",&cflMin,NULL);CHKERRQ(ierr);
+  const PetscScalar dtMin = cflMin * ctx.dx;
   ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
   PetscBool firstWithIE = PETSC_FALSE;
@@ -255,25 +259,40 @@ int main(int argc, char **argv) {
     PetscLogDouble timeStart, timeEnd;
     ierr=PetscTime(&timeStart);CHKERRQ(ierr);
     ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
-    ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
-    timeEnd-=timeStart;
-    MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MIN, 0, PETSC_COMM_WORLD);
-    PetscPrintf(PETSC_COMM_WORLD," step completed in (%f - ",timeStart);
-    MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MAX, 0, PETSC_COMM_WORLD);
-    PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
-    //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
-    passo++;
-    t += ctx.dt;
-    ierr = hdf5Output.writeHDF5(ctx.U, t,true);
-    ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"****** t=%f, still %g to go *****\n",t,std::max(tFinal-t,0.));
-    ctx.dt = cfl*ctx.dx;
+    SNESConvergedReason reason;
+    ierr = SNESGetConvergedReason(snes, &reason); CHKERRQ(ierr);
+    if (reason>0){ //SNES converged
+      ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
+      timeEnd-=timeStart;
+      MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MIN, 0, PETSC_COMM_WORLD);
+      PetscPrintf(PETSC_COMM_WORLD," step completed in (%f - ",timeStart);
+      MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MAX, 0, PETSC_COMM_WORLD);
+      PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
+      //ierr = PetscLogStagePop();CHKERRQ(ierr);
 
-    if (firstWithIE){
-      if (passo==1)
-        PetscPrintf(PETSC_COMM_WORLD,"Switching to Crank-Nicholson\n");
-      ctx.theta=0.5; //set to 0 for Implicit Euler
+      passo++;
+      t += ctx.dt;
+      ierr = hdf5Output.writeHDF5(ctx.U, t,true);
+      ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
+      PetscPrintf(PETSC_COMM_WORLD,"****** t= %f, dt= %3.2e, cfl= %3.2e, still %g to go *****\n",t,ctx.dt,ctx.dt/ctx.dx,std::max(tFinal-t,0.));
+      //ctx.dt = cfl*ctx.dx;
+
+      if (firstWithIE){
+        if (passo==1)
+          PetscPrintf(PETSC_COMM_WORLD,"Switching to Crank-Nicholson\n");
+        ctx.theta=0.5; //set to 0 for Implicit Euler
+      }
+      if (ctx.dt < cfl*ctx.dx)
+        ctx.dt = std::min(2.0*ctx.dt , cfl*ctx.dx);
+    } else { //SNES diverged
+      if (ctx.dt <= dtMin){
+        PetscPrintf(PETSC_COMM_WORLD,"Reached minimum CFL. Stopping simulation\n");
+        break;
+      } else{
+        ctx.dt = std::max(0.5*ctx.dt, dtMin);
+        PetscPrintf(PETSC_COMM_WORLD," Step diverged. Retrying with dt=%3.2e, cfl=%3.2e\n", ctx.dt,ctx.dt/ctx.dx);
+      }
     }
   }
 
