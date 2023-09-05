@@ -213,11 +213,12 @@ int main(int argc, char **argv) {
   ////Use Crank-Nicolson
   PetscScalar cfl=0.05;
   ierr = PetscOptionsGetScalar(NULL,NULL,"-cfl",&cfl,NULL);CHKERRQ(ierr);
-  ctx.dt = cfl * ctx.dx;
   PetscScalar cflMin = 1./ctx.pb.a;
   ierr = PetscOptionsGetScalar(NULL,NULL,"-cflMin",&cflMin,NULL);CHKERRQ(ierr);
   const PetscScalar dtMin = cflMin * ctx.dx;
   ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
+
+  ctx.dt = 1./ctx.pb.a;
 
   PetscBool firstWithIE = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,NULL,"-firstIE",&firstWithIE,NULL);CHKERRQ(ierr);
@@ -252,6 +253,7 @@ int main(int argc, char **argv) {
     if (t+ctx.dt>=tFinal-1.e-15)
       ctx.dt = (tFinal - t) + 1.e-15;
 
+    PetscPrintf(PETSC_COMM_WORLD,"Trying step with dt= %3.2e\n",ctx.dt);
     ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS);CHKERRQ(ierr);
 
     ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
@@ -283,7 +285,10 @@ int main(int argc, char **argv) {
           PetscPrintf(PETSC_COMM_WORLD,"Switching to Crank-Nicholson\n");
         ctx.theta=0.5; //set to 0 for Implicit Euler
       }
-      if (ctx.dt < cfl*ctx.dx)
+      PetscInt snesIter;
+      ierr = SNESGetIterationNumber(snes, &snesIter); CHKERRQ(ierr);
+
+      if ((snesIter<5) && (ctx.dt < cfl*ctx.dx))
         ctx.dt = std::min(2.0*ctx.dt , cfl*ctx.dx);
     } else { //SNES diverged
       if (ctx.dt <= dtMin){
