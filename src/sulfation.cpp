@@ -46,7 +46,6 @@ const PetscScalar aExpl[2] = {0. , 1.-RKlambda};
 PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec Uin, Vec Uout);
 PetscErrorCode setMatValuesSC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat A);
 PetscErrorCode setMatValuesCSCC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat A);
-PetscErrorCode FormStage(AppContext &ctx,Vec U,Vec F);
 
 // Un is taken from ctx.U0, solution at time t_{n+1} is left in ctx.U
 // Also ctx.dt is updated with the initial guess for the next step

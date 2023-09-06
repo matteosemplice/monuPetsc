@@ -264,6 +264,7 @@ int main(int argc, char **argv) {
     ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
     //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
     ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr); //solve for U1, first stage value
+    SNESConvergedReason reason;
     ierr = SNESGetConvergedReason(snes, &reason); CHKERRQ(ierr);
     if (reason<0){
       ctx.dt *= 0.5;
