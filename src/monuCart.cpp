@@ -189,6 +189,8 @@ int main(int argc, char **argv) {
   ierr = VecDuplicate(ctx.U,&ctx.U0); CHKERRQ(ierr);
   ierr = VecDuplicate(ctx.U,&ctx.F ); CHKERRQ(ierr);
   ierr = VecDuplicate(ctx.U,&ctx.RHS); CHKERRQ(ierr);
+  ierr = VecDuplicate(ctx.U,&ctx.K1 ); CHKERRQ(ierr);
+  ierr = VecDuplicate(ctx.U,&ctx.K2 ); CHKERRQ(ierr);
   ierr = DMCreateLocalVector(ctx.daAll,&ctx.Uloc); CHKERRQ(ierr);
   ierr = DMCreateLocalVector(ctx.daField[var::c],&ctx.POROSloc); CHKERRQ(ierr);
 
@@ -216,16 +218,8 @@ int main(int argc, char **argv) {
   PetscScalar cflMin = 1./ctx.pb.a;
   ierr = PetscOptionsGetScalar(NULL,NULL,"-cflMin",&cflMin,NULL);CHKERRQ(ierr);
   const PetscScalar dtMin = cflMin * ctx.dx;
-  ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
   ctx.dt = 1./ctx.pb.a;
-
-  PetscBool firstWithIE = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,NULL,"-firstIE",&firstWithIE,NULL);CHKERRQ(ierr);
-  if (firstWithIE){
-    PetscPrintf(PETSC_COMM_WORLD,"Using IE for the first timestep\n");
-    ctx.theta=0.; //set to 0 for Implicit Euler
-  }
 
   //Initial data
   ierr = setInitialData(ctx, ctx.U0); CHKERRQ(ierr);
@@ -250,55 +244,64 @@ int main(int argc, char **argv) {
 
   while (t<tFinal)
   {
+    if (ctx.dt <= dtMin){
+      PetscPrintf(PETSC_COMM_WORLD,"Reached minimum CFL. Stopping simulation\n");
+      break;
+    }
     if (t+ctx.dt>=tFinal-1.e-15)
       ctx.dt = (tFinal - t) + 1.e-15;
 
     PetscPrintf(PETSC_COMM_WORLD,"Trying step with dt= %3.2e\n",ctx.dt);
-    ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS);CHKERRQ(ierr);
 
     ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
     //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
     PetscLogDouble timeStart, timeEnd;
     ierr=PetscTime(&timeStart);CHKERRQ(ierr);
-    ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr);
 
-    SNESConvergedReason reason;
+    ierr = VecZeroEntries(ctx.K1); CHKERRQ(ierr);
+    ierr = VecZeroEntries(ctx.K2); CHKERRQ(ierr);
+    ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS, 0);CHKERRQ(ierr);
+    ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
+    //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
+    ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr); //solve for U1, first stage value
     ierr = SNESGetConvergedReason(snes, &reason); CHKERRQ(ierr);
-    if (reason>0){ //SNES converged
-      ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
-      timeEnd-=timeStart;
-      MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MIN, 0, PETSC_COMM_WORLD);
-      PetscPrintf(PETSC_COMM_WORLD," step completed in (%f - ",timeStart);
-      MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MAX, 0, PETSC_COMM_WORLD);
-      PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
-      //ierr = PetscLogStagePop();CHKERRQ(ierr);
-
-      passo++;
-      t += ctx.dt;
-      ierr = hdf5Output.writeHDF5(ctx.U, t,true);
-      ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
-      PetscPrintf(PETSC_COMM_WORLD,"****** t= %f, dt= %3.2e, cfl= %3.2e, still %g to go *****\n",t,ctx.dt,ctx.dt/ctx.dx,std::max(tFinal-t,0.));
-      //ctx.dt = cfl*ctx.dx;
-
-      if (firstWithIE){
-        if (passo==1)
-          PetscPrintf(PETSC_COMM_WORLD,"Switching to Crank-Nicholson\n");
-        ctx.theta=0.5; //set to 0 for Implicit Euler
-      }
-      PetscInt snesIter;
-      ierr = SNESGetIterationNumber(snes, &snesIter); CHKERRQ(ierr);
-
-      if ((snesIter<5) && (ctx.dt < cfl*ctx.dx))
-        ctx.dt = std::min(2.0*ctx.dt , cfl*ctx.dx);
-    } else { //SNES diverged
-      if (ctx.dt <= dtMin){
-        PetscPrintf(PETSC_COMM_WORLD,"Reached minimum CFL. Stopping simulation\n");
-        break;
-      } else{
-        ctx.dt = std::max(0.5*ctx.dt, dtMin);
-        PetscPrintf(PETSC_COMM_WORLD," Step diverged. Retrying with dt=%3.2e, cfl=%3.2e\n", ctx.dt,ctx.dt/ctx.dx);
-      }
+    if (reason<0){
+      ctx.dt *= 0.5;
+      PetscPrintf(PETSC_COMM_WORLD," ---  Newton solver for stage 1 diverged: halving timestep (now %3.2e )\n",ctx.dt);
+      continue;
     }
+    ierr = FormStage(ctx,ctx.U,ctx.K1); CHKERRQ(ierr); // compute k1
+    ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS, 1);CHKERRQ(ierr);
+    ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr); //solve for U2, second stage value and solution at t_{n+1}
+    ierr = SNESGetConvergedReason(snes, &reason); CHKERRQ(ierr);
+    if (reason<0){
+      PetscPrintf(PETSC_COMM_WORLD," --- Newton solver for stage 2 diverged: halving timestep\n");
+      ctx.dt *= 0.5;
+      continue;
+    }
+
+    //both SNES converged
+    ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
+    timeEnd-=timeStart;
+    MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MIN, 0, PETSC_COMM_WORLD);
+    PetscPrintf(PETSC_COMM_WORLD," step completed in (%f - ",timeStart);
+    MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MAX, 0, PETSC_COMM_WORLD);
+    PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
+    //ierr = PetscLogStagePop();CHKERRQ(ierr);
+
+    passo++;
+    t += ctx.dt;
+    ierr = hdf5Output.writeHDF5(ctx.U, t,true);
+    ierr = VecSwap(ctx.U,ctx.U0); CHKERRQ(ierr);
+    PetscPrintf(PETSC_COMM_WORLD,"****** t= %f, dt= %3.2e, cfl= %3.2e, still %g to go *****\n",t,ctx.dt,ctx.dt/ctx.dx,std::max(tFinal-t,0.));
+    //ctx.dt = cfl*ctx.dx;
+
+    PetscInt snesIter;
+    ierr = SNESGetIterationNumber(snes, &snesIter); CHKERRQ(ierr);
+
+    if ((snesIter<5) && (ctx.dt < cfl*ctx.dx))
+      ctx.dt = std::min(2.0*ctx.dt , cfl*ctx.dx);
+
   }
 
   hdf5Output.writeSimulationXDMF();

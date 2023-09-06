@@ -4,18 +4,124 @@
 #include <petscviewerhdf5.h>
 #include <cassert>
 
+/*
+ * Using the DIRK embedded pair
+ * l | l     0
+ * 1 | (1-l) l
+ * -----------
+ *   | (1-l) l   <-- second order solution
+ *   | (1-b) b   <-- first order solution
+ * where l=sqrt(2)/2 and b is any number different from l
+ *
+ * First stage value solves
+ *     U1 - (1-l)*dt*f(U1) = Un
+ * Second stage value solves
+ *     U2 -    l *dt*f(U2) = Un + (1-l)*dt*K1
+ * and U2 coincides with U_{n+1}
+ * and stages are K1=f(U1), K2=f(U2)
+ * The estimate of the local truncation error is thus:
+ *  (U2 - (Un+dt*(1-b)K1+dt*b*K2)) / dt  = (l-b)*K1 + (b-l)*K2
+ *
+ * A time step requires:
+ *  1. solve for U1
+ *  2. compute K1=f(U1)
+ *  3. solve for U_{n+1}=U2
+ *  4. compute K2=f(U2)
+ *  5. compute error estimate using K1, K2
+ *
+ * The two nonlinear solves are generalized as:
+ *
+ *   U - lambda*dt*f(U) = Un + aExpl*dt*K1\
+ * where aExpl=0        for the first stage
+ *       aExpl=1-lambda for the second stage
+ *
+ * */
+
+const PetscScalar RKlambda = 1.-sqrt(2.)/2.;
+const PetscScalar RKb      = 0.5;
+const PetscScalar aExpl[2] = {0. , 1.-RKlambda};
+
 //int contaF=0;
 
 PetscErrorCode odeFun(AppContext &ctx, Vec POROSloc, Vec Uin, Vec Uout);
 PetscErrorCode setMatValuesSC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat A);
 PetscErrorCode setMatValuesCSCC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat A);
+PetscErrorCode FormStage(AppContext &ctx,Vec U,Vec F);
+
+// Un is taken from ctx.U0, solution at time t_{n+1} is left in ctx.U
+// Also ctx.dt is updated with the initial guess for the next step
+PetscErrorCode computeSulfationStep(AppContext &ctx, SNES snes){
+  PetscErrorCode ierr;
+  PetscLogDouble timeStart, timeEnd;
+  ierr=PetscTime(&timeStart);CHKERRQ(ierr);
+
+  bool again=true;
+  SNESConvergedReason reason;
+
+  while (again){
+    PetscPrintf(PETSC_COMM_WORLD," ==== Trying step with dt %3.2e \n",ctx.dt);
+    ierr = VecZeroEntries(ctx.K1); CHKERRQ(ierr);
+    ierr = VecZeroEntries(ctx.K2); CHKERRQ(ierr);
+    ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS, 0);CHKERRQ(ierr);
+    ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
+    //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
+    ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr); //solve for U1, first stage value
+    ierr = SNESGetConvergedReason(snes, &reason); CHKERRQ(ierr);
+    if (reason<0){
+      ctx.dt *= 0.5;
+      PetscPrintf(PETSC_COMM_WORLD," ---  Newton solver for stage 1 diverged: halving timestep (now %3.2e )\n",ctx.dt);
+      continue;
+    }
+    ierr = FormStage(ctx,ctx.U,ctx.K1); CHKERRQ(ierr); // compute k1
+
+    ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS, 1);CHKERRQ(ierr);
+    ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr); //solve for U2, second stage value and solution at t_{n+1}
+    ierr = SNESGetConvergedReason(snes, &reason); CHKERRQ(ierr);
+    if (reason<0){
+      PetscPrintf(PETSC_COMM_WORLD," --- Newton solver for stage 2 diverged: halving timestep\n");
+      ctx.dt *= 0.5;
+      continue;
+    }
+    ierr = FormStage(ctx,ctx.U,ctx.K2); CHKERRQ(ierr); // compute k2
+
+    //error estimate: eta = |U2-U1|/dt
+    // K2 = a*K2+b*K1
+    ierr = VecAXPBY(ctx.K2, (RKb-RKlambda), (RKlambda-RKb), ctx.K1); CHKERRQ(ierr);
+    PetscScalar eta;
+    ierr = VecNorm(ctx.K2, NORM_2, &eta);
+    eta *= std::sqrt( ctx.dx*ctx.dx*ctx.dx );
+    PetscScalar factor = ctx.RKtoll/eta;
+    PetscPrintf(PETSC_COMM_WORLD," ---  RK dt factor= %3.2e \n",factor);
+
+    //factor = std::min(factor, 2.0); //do not increase more than 2-fold
+    //factor = std::max(factor, 0.25); //do not decrease more than 4-fold
+
+    //step check/rejection and next dt estimate
+    if (factor>=1.){
+      ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
+      timeEnd-=timeStart;
+      MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MIN, 0, PETSC_COMM_WORLD);
+      PetscPrintf(PETSC_COMM_WORLD," ===  step of dt=%3.2e completed in (%f - ",ctx.dt,timeStart);
+      MPI_Reduce( (void *) &timeEnd, (void *) &timeStart, 1, MPI_DOUBLE, MPI_MAX, 0, PETSC_COMM_WORLD);
+      PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
+      again = false;
+    } else {
+      PetscPrintf(PETSC_COMM_WORLD," /-/  rejected step of dt=%3.2e \n ",ctx.dt);
+    }
+    ctx.dt *= 0.95 * factor;
+
+  } //while (again)
+
+  //ierr = PetscLogStagePop();CHKERRQ(ierr);
+  return ierr;
+}
 
 PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
   PetscErrorCode ierr;
   AppContext * ctx_p = (AppContext *) _ctx;
   AppContext &ctx = *ctx_p;
 
-  PetscPrintf(PETSC_COMM_WORLD,"Computing F ...");
+  //PetscPrintf(PETSC_COMM_WORLD,"Computing F ...");
   PetscLogDouble timeStart, timeEnd;
   ierr=PetscTime(&timeStart);CHKERRQ(ierr);
   //contaF++;
@@ -45,7 +151,7 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
         //const PetscScalar cRhoS = uIn[k][j][i][var::c] * poros[k][j][i] * uIn[k][j][i][var::s];
         if(nodetype[k][j][i]==N_INSIDE)
           f[k][j][i][var::s] = poros[k][j][i] * u[k][j][i][var::s]
-                               + ctx.dt * (ctx.theta-1.0) * f[k][j][i][var::s];
+                               - ctx.dt * RKlambda * f[k][j][i][var::s];
         if(nodetype[k][j][i]>=0){ //ghost points
           f[k][j][i][var::s] = 0.;
           if (nodetype[k][j][i] < ctx.nn123){ // Ghost.Phi1
@@ -63,7 +169,7 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
         }
         if(nodetype[k][j][i]>=N_INSIDE) //inner and ghost points
           f[k][j][i][var::c] = u[k][j][i][var::c]
-                               + ctx.dt * (ctx.theta-1.0) * f[k][j][i][var::c];
+                               - ctx.dt * RKlambda * f[k][j][i][var::c];
       }
     }
   }
@@ -75,30 +181,67 @@ PetscErrorCode FormSulfationF(SNES snes,Vec U,Vec F,void *_ctx){
 
   ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
   //PetscPrintf(PETSC_COMM_SELF,"%d] Computing F done (%f s).\n",ctx.rank,timeEnd-timeStart);
-  timeEnd-=timeStart;
-  MPI_Reduce(
-    (void *) &timeEnd,
-    (void *) &timeStart,
-    1,
-    MPI_DOUBLE,
-    MPI_MIN,
-    0,
-    PETSC_COMM_WORLD);
-  PetscPrintf(PETSC_COMM_WORLD," done in (%d - ",ctx.rank);
-  MPI_Reduce(
-    (void *) &timeEnd,
-    (void *) &timeStart,
-    1,
-    MPI_DOUBLE,
-    MPI_MAX,
-    0,
-    PETSC_COMM_WORLD);
-  PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
+  //timeEnd-=timeStart;
+  //MPI_Reduce(
+    //(void *) &timeEnd,
+    //(void *) &timeStart,
+    //1,
+    //MPI_DOUBLE,
+    //MPI_MIN,
+    //0,
+    //PETSC_COMM_WORLD);
+  //PetscPrintf(PETSC_COMM_WORLD," done in (%f - ",timeStart);
+  //MPI_Reduce(
+    //(void *) &timeEnd,
+    //(void *) &timeStart,
+    //1,
+    //MPI_DOUBLE,
+    //MPI_MAX,
+    //0,
+    //PETSC_COMM_WORLD);
+  //PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
 
   return ierr;
 }
 
-PetscErrorCode FormSulfationRHS(AppContext &ctx,Vec U0,Vec F0){
+PetscErrorCode FormStage(AppContext &ctx,Vec U,Vec F){
+  PetscErrorCode ierr;
+
+  ierr = DMGlobalToLocalBegin(ctx.daAll,U,INSERT_VALUES,ctx.Uloc);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (ctx.daAll,U,INSERT_VALUES,ctx.Uloc);CHKERRQ(ierr);
+  ierr = computePorosity(ctx, ctx.Uloc, ctx.POROSloc);CHKERRQ(ierr);
+
+  ierr = odeFun(ctx, ctx.POROSloc, ctx.Uloc, F);CHKERRQ(ierr);
+
+  PetscScalar ****u, ****f;
+  PetscScalar ***nodetype, ***poros;
+
+  ierr = DMDAVecGetArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayRead(ctx.daField[var::c], ctx.POROSloc, &poros);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayDOFRead(ctx.daAll, U, &u);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayDOFRead(ctx.daAll, F, &f);CHKERRQ(ierr);
+
+  for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++){
+    for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++){
+      for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++){
+        //const PetscScalar cRhoS = uIn[k][j][i][var::c] * poros[k][j][i] * uIn[k][j][i][var::s];
+        if(nodetype[k][j][i] != N_INSIDE){ //ghost points
+          f[k][j][i][var::s] = 0.;
+          f[k][j][i][var::c] = 0.;
+        }
+      }
+    }
+  }
+
+  ierr = DMDAVecRestoreArrayRead(ctx.daField[var::s], ctx.NODETYPE, &nodetype);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayRead(ctx.daField[var::c], ctx.POROSloc, &poros);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, U, &u);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, F, &f);CHKERRQ(ierr);
+
+  return ierr;
+}
+
+PetscErrorCode FormSulfationRHS(AppContext &ctx,Vec U0,Vec F0, int stage){
   PetscErrorCode ierr;
 
   PetscPrintf(PETSC_COMM_WORLD,"Computing RHS\n");
@@ -126,14 +269,14 @@ PetscErrorCode FormSulfationRHS(AppContext &ctx,Vec U0,Vec F0){
         //const PetscScalar cRhoS = uIn[k][j][i][var::c] * poros[k][j][i] * uIn[k][j][i][var::s];
         if(nodetype[k][j][i]==N_INSIDE){
           f0[k][j][i][var::s] = poros[k][j][i] * u0[k][j][i][var::s]
-                               + ctx.dt * ctx.theta * f0[k][j][i][var::s];
+                               + ctx.dt * aExpl[stage] * f0[k][j][i][var::s];
           f0[k][j][i][var::c] = u0[k][j][i][var::c]
-                               + ctx.dt * ctx.theta * f0[k][j][i][var::c];
+                               + ctx.dt * aExpl[stage] * f0[k][j][i][var::c];
         }
         if(nodetype[k][j][i]>=0){ //ghost points
           f0[k][j][i][var::s] = ctx.pb.sExt;
           f0[k][j][i][var::c] = u0[k][j][i][var::c]
-                               + ctx.dt * ctx.theta * f0[k][j][i][var::c];
+                               + ctx.dt * aExpl[stage] * f0[k][j][i][var::c];
         }
       }
     }
@@ -152,7 +295,7 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   AppContext * ctx_p = (AppContext *) _ctx;
   AppContext &ctx = *ctx_p;
 
-  PetscPrintf(PETSC_COMM_WORLD,"Computing J ...");
+  //PetscPrintf(PETSC_COMM_WORLD,"Computing J ...");
   PetscLogDouble timeStart, timeEnd;
   ierr=PetscTime(&timeStart);CHKERRQ(ierr);
   //ierr = PetscLogStagePush(ctx.logStages[ASSEMBLY]);CHKERRQ(ierr);
@@ -174,14 +317,14 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
     for (PetscInt k=ctx.daInfo.zs; k<ctx.daInfo.zs+ctx.daInfo.zm; k++)
       for (PetscInt j=ctx.daInfo.ys; j<ctx.daInfo.ys+ctx.daInfo.ym; j++)
         for (PetscInt i=ctx.daInfo.xs; i<ctx.daInfo.xs+ctx.daInfo.xm; i++)
-          sigma[k][j][i] = poros[k][j][i] -
-                          ctx.dt * (ctx.theta-1.0) * As * u[k][j][i][var::c] * poros[k][j][i];
+          sigma[k][j][i] = poros[k][j][i] +
+                          ctx.dt * RKlambda * As * u[k][j][i][var::c] * poros[k][j][i];
     ierr = DMDAVecRestoreArrayRead(ctx.daField[var::c], ctx.POROSloc, &poros);CHKERRQ(ierr);
     ierr = DMDAVecRestoreArrayRead(ctx.daField[var::c], ctx.Sigma   , &sigma);CHKERRQ(ierr);
     ierr = DMDAVecRestoreArrayDOFRead(ctx.daAll, U , &u);CHKERRQ(ierr);
   }
 
-  ierr = setMatValuesHelmoltz(ctx, ctx.daField[var::s], ctx.POROSloc, ctx.Sigma, ctx.pb.d*ctx.dt*(ctx.theta-1.0), P);CHKERRQ(ierr);
+  ierr = setMatValuesHelmoltz(ctx, ctx.daField[var::s], ctx.POROSloc, ctx.Sigma, -ctx.pb.d*ctx.dt*RKlambda, P);CHKERRQ(ierr);
   ierr = setMatValuesSC(ctx, ctx.Uloc, ctx.daField[var::s], ctx.POROSloc, P);CHKERRQ(ierr);
   ierr = setMatValuesCSCC(ctx, U, ctx.daField[var::c], ctx.POROSloc, P);CHKERRQ(ierr);
 
@@ -193,25 +336,25 @@ PetscErrorCode FormSulfationJ(SNES snes,Vec U,Mat J, Mat P,void *_ctx){
   ierr=PetscTime(&timeEnd);CHKERRQ(ierr);
   //PetscPrintf(PETSC_COMM_SELF,"%d] Computing J done (%f s).\n",ctx.rank,timeEnd-timeStart);
 
-  timeEnd-=timeStart;
-  MPI_Reduce(
-    (void *) &timeEnd,
-    (void *) &timeStart,
-    1,
-    MPI_DOUBLE,
-    MPI_MIN,
-    0,
-    PETSC_COMM_WORLD);
-  PetscPrintf(PETSC_COMM_WORLD," done in (%d - ",ctx.rank);
-  MPI_Reduce(
-    (void *) &timeEnd,
-    (void *) &timeStart,
-    1,
-    MPI_DOUBLE,
-    MPI_MAX,
-    0,
-    PETSC_COMM_WORLD);
-  PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
+  //timeEnd-=timeStart;
+  //MPI_Reduce(
+    //(void *) &timeEnd,
+    //(void *) &timeStart,
+    //1,
+    //MPI_DOUBLE,
+    //MPI_MIN,
+    //0,
+    //PETSC_COMM_WORLD);
+  //PetscPrintf(PETSC_COMM_WORLD," done in (%f - ",timeStart);
+  //MPI_Reduce(
+    //(void *) &timeEnd,
+    //(void *) &timeStart,
+    //1,
+    //MPI_DOUBLE,
+    //MPI_MAX,
+    //0,
+    //PETSC_COMM_WORLD);
+  //PetscPrintf(PETSC_COMM_WORLD,"%f s).\n",timeStart);
 
   return ierr;
 }
@@ -253,9 +396,9 @@ PetscErrorCode setMatValuesCSCC(AppContext &ctx, Vec U, DM da, Vec POROSloc, Mat
         else if(nodetype[k][j][i]>=N_INSIDE ) //inner and ghosts
         {
           //diagonal in Jcc
-          vals[0] = 1.0 - ctx.dt*(ctx.theta-1.0)*Ac * u[k][j][i][var::s] * (poros[k][j][i] + u[k][j][i][var::c] * ctx.pb.phiDer(u[k][j][i][var::c]));
+          vals[0] = 1.0 + ctx.dt*RKlambda*Ac * u[k][j][i][var::s] * (poros[k][j][i] + u[k][j][i][var::c] * ctx.pb.phiDer(u[k][j][i][var::c]));
           //diagonal in Jsc
-          vals[1] =     - ctx.dt*(ctx.theta-1.0)*Ac * u[k][j][i][var::c] * poros[k][j][i];
+          vals[1] =     + ctx.dt*RKlambda*Ac * u[k][j][i][var::c] * poros[k][j][i];
           MatSetValuesStencil(A,1,&row,2,cols,vals,INSERT_VALUES);
         }
         else
@@ -309,9 +452,9 @@ PetscErrorCode setMatValuesSC(AppContext &ctx, Vec UinLoc, DM da, Vec POROSloc, 
           const PetscScalar dsZ1 = 0.5* ( u[k][j][i][var::s] - u[k+1][j][i][var::s]); //N.B. -diff
 
           const PetscScalar extraDiag = ctx.pb.phiDer(u[k][j][i][var::c]) * u[k][j][i][var::s]
-                                        -ctx.dt*(ctx.theta-1.0)*As*u[k][j][i][var::s]
+                                        +ctx.dt*RKlambda*As*u[k][j][i][var::s]
                                                *(poros[k][j][i] + ctx.pb.phiDer(u[k][j][i][var::c])*u[k][j][i][var::c]);
-          const PetscScalar factor = ctx.pb.d * ctx.dt*(ctx.theta-1.0);
+          const PetscScalar factor = -ctx.pb.d * ctx.dt*RKlambda;
           
           PetscScalar vals[7]={
             extraDiag + 

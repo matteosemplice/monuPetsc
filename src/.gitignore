@@ -1,3 +1,5 @@
-PetscDef.make
-*.o
-monuCart
+*
+~*.cpp
+~*.h
+~*.hpp
+~*.c

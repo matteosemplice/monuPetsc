@@ -116,7 +116,8 @@ typedef struct {
   Vec U,U0,F;
   Vec Uloc,POROSloc;
   sulfationProblem pb;
-  PetscScalar theta; //theta method
+  PetscScalar aExpl, aImpl, RKtoll; //coeffs for the RK stages (used by SNES functions)
+  Vec K1,K2;
   PetscScalar dt; //time step
   PetscScalar tLoad=0.; //time step
   PetscInt nLoad=0; //time step
