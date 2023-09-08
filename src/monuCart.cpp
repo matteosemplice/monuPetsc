@@ -189,8 +189,6 @@ int main(int argc, char **argv) {
   ierr = VecDuplicate(ctx.U,&ctx.U0); CHKERRQ(ierr);
   ierr = VecDuplicate(ctx.U,&ctx.F ); CHKERRQ(ierr);
   ierr = VecDuplicate(ctx.U,&ctx.RHS); CHKERRQ(ierr);
-  ierr = VecDuplicate(ctx.U,&ctx.K1 ); CHKERRQ(ierr);
-  ierr = VecDuplicate(ctx.U,&ctx.K2 ); CHKERRQ(ierr);
   ierr = DMCreateLocalVector(ctx.daAll,&ctx.Uloc); CHKERRQ(ierr);
   ierr = DMCreateLocalVector(ctx.daField[var::c],&ctx.POROSloc); CHKERRQ(ierr);
 
@@ -253,13 +251,10 @@ int main(int argc, char **argv) {
 
     PetscPrintf(PETSC_COMM_WORLD,"Trying step with dt= %3.2e\n",ctx.dt);
 
-    ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
     //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
     PetscLogDouble timeStart, timeEnd;
     ierr=PetscTime(&timeStart);CHKERRQ(ierr);
 
-    ierr = VecZeroEntries(ctx.K1); CHKERRQ(ierr);
-    ierr = VecZeroEntries(ctx.K2); CHKERRQ(ierr);
     ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS, 0);CHKERRQ(ierr);
     ierr = VecCopy(ctx.U0,ctx.U); CHKERRQ(ierr);
     //ierr = PetscLogStagePush(ctx.logStages[SOLVING]);CHKERRQ(ierr);
@@ -271,8 +266,7 @@ int main(int argc, char **argv) {
       PetscPrintf(PETSC_COMM_WORLD," ---  Newton solver for stage 1 diverged: halving timestep (now %3.2e )\n",ctx.dt);
       continue;
     }
-    ierr = FormStage(ctx,ctx.U,ctx.K1); CHKERRQ(ierr); // compute k1
-    ierr = FormSulfationRHS(ctx, ctx.U0, ctx.RHS, 1);CHKERRQ(ierr);
+    ierr = FormSulfationRHS(ctx, ctx.U, ctx.RHS, 1);CHKERRQ(ierr);
     ierr = SNESSolve(snes,ctx.RHS,ctx.U); CHKERRQ(ierr); //solve for U2, second stage value and solution at t_{n+1}
     ierr = SNESGetConvergedReason(snes, &reason); CHKERRQ(ierr);
     if (reason<0){
