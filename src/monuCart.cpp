@@ -219,6 +219,7 @@ int main(int argc, char **argv) {
   ctx.theta=0.5; //Crank-Nicolson, set to 0 for Implicit Euler
 
   ctx.dt = 1./ctx.pb.a;
+  ierr = PetscOptionsGetScalar(NULL,NULL,"-dt",&(ctx.dt),NULL);CHKERRQ(ierr);
 
   PetscBool firstWithIE = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,NULL,"-firstIE",&firstWithIE,NULL);CHKERRQ(ierr);
